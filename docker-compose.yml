@@ -1,0 +1,13 @@
+services:
+  yt-dlp-host:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./tasks.json:/app/tasks.json
+      - ./api_keys.json:/app/api_keys.json
+    environment:
+      - FLASK_APP=server.py
+      - FLASK_RUN_HOST=0.0.0.0
+    restart: unless-stopped
