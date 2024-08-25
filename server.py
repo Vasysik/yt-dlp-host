@@ -28,6 +28,7 @@ def download():
     task_id = generate_random_id()
     tasks = yt_handler.load_tasks()
     tasks[task_id] = {
+        'key_name': auth.get_key_name(),
         'status': 'waiting',
         'task_type': 'download',
         'url': url,
@@ -50,6 +51,7 @@ def get_info():
     task_id = generate_random_id()
     tasks = yt_handler.load_tasks()
     tasks[task_id] = {
+        'key_name': auth.get_key_name(),
         'status': 'waiting',
         'task_type': 'get_info',
         'url': url

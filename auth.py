@@ -39,6 +39,13 @@ def check_api_key(required_permission):
         return decorated_function
     return decorator
 
+def get_key_name():
+    keys = load_keys()
+    for key_name, key_info in keys.items():
+        if key_info['key'] == request.headers.get('X-API-Key'):
+            return key_name
+    return None
+
 def create_api_key(name, permissions):
     keys = load_keys()
     new_key = generate_key()
