@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-RUN apt-get -y update && apt-get -y upgrade && apt-get install -y ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
 
 WORKDIR /app
 
