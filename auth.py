@@ -1,22 +1,21 @@
 from functools import wraps
 from flask import request, jsonify
-from config import KEYS_FILE
-import json
-import os
+from json_utils import load_keys, save_keys, load_tasks
+from config import REQUEST_LIMIT, TASK_CLEANUP_TIME
 import secrets
 
 def generate_key():
     return secrets.token_urlsafe(32)
 
-def load_keys():
-    if os.path.exists(KEYS_FILE):
-        with open(KEYS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_keys(keys):
-    with open(KEYS_FILE, 'w') as f:
-        json.dump(keys, f, indent=4)
+def check_rate_limit(api_key):
+    tasks = load_tasks()
+    key_name = get_key_name(api_key)
+    rate = 0
+    for task_name, task_info in tasks.items():
+        if task_info['key_name'] == key_name:
+            rate += 1
+    if rate >= REQUEST_LIMIT: return False
+    return True
 
 def check_api_key(required_permission):
     def decorator(f):
@@ -25,6 +24,9 @@ def check_api_key(required_permission):
             api_key = request.headers.get('X-API-Key')
             if not api_key:
                 return jsonify({'error': 'No API key provided'}), 401
+            
+            if not check_rate_limit(api_key):
+                return jsonify({'error': f'Rate limit exceeded. Maximum {REQUEST_LIMIT} requests per {TASK_CLEANUP_TIME} minutes.'}), 429
             
             keys = load_keys()
             key_info = next((item for item in keys.values() if item['key'] == api_key), None)
@@ -39,10 +41,10 @@ def check_api_key(required_permission):
         return decorated_function
     return decorator
 
-def get_key_name():
+def get_key_name(api_key):
     keys = load_keys()
     for key_name, key_info in keys.items():
-        if key_info['key'] == request.headers.get('X-API-Key'):
+        if key_info['key'] == api_key:
             return key_name
     return None
 

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
-from config import DOWNLOAD_DIR, TASKS_FILE
+from json_utils import load_tasks, save_tasks
+from config import DOWNLOAD_DIR
 import yt_handler
 import auth
 import random
@@ -26,16 +27,16 @@ def download():
         return jsonify({'status': 'error', 'message': 'Format is required'}), 400
     
     task_id = generate_random_id()
-    tasks = yt_handler.load_tasks()
+    tasks = load_tasks()
     tasks[task_id] = {
-        'key_name': auth.get_key_name(),
+        'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
         'status': 'waiting',
         'task_type': 'download',
         'url': url,
         'format': format,
         'quality': quality
     }
-    yt_handler.save_tasks(tasks)
+    save_tasks(tasks)
 
     return jsonify({'status': 'waiting', 'task_id': task_id})
 
@@ -49,20 +50,20 @@ def get_info():
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
 
     task_id = generate_random_id()
-    tasks = yt_handler.load_tasks()
+    tasks = load_tasks()
     tasks[task_id] = {
-        'key_name': auth.get_key_name(),
+        'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
         'status': 'waiting',
         'task_type': 'get_info',
         'url': url
     }
-    yt_handler.save_tasks(tasks)
+    save_tasks(tasks)
 
     return jsonify({'status': 'waiting', 'task_id': task_id})
 
 @app.route('/status/<task_id>', methods=['GET'])
 def status(task_id):
-    tasks = yt_handler.load_tasks()
+    tasks = load_tasks()
     if task_id not in tasks:
         return jsonify({'status': 'error', 'message': 'Task ID not found'}), 404
 

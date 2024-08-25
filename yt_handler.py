@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
-from config import DOWNLOAD_DIR, TASKS_FILE, TASK_CLEANUP_TIME, MAX_WORKERS
+from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
+from json_utils import load_tasks, save_tasks
 import yt_dlp
 import os
 import threading
@@ -11,16 +12,6 @@ executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
 if not os.path.exists(DOWNLOAD_DIR):
     os.makedirs(DOWNLOAD_DIR)
-
-def load_tasks():
-    if os.path.exists(TASKS_FILE):
-        with open(TASKS_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_tasks(tasks):
-    with open(TASKS_FILE, 'w') as f:
-        json.dump(tasks, f, indent=4)
 
 def get_info(task_id, url):
     try:
