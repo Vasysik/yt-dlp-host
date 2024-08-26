@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import request, jsonify
-from json_utils import load_keys, save_keys, load_tasks
+from src.json_utils import load_keys, save_keys, load_tasks
 from config import REQUEST_LIMIT, TASK_CLEANUP_TIME
 import secrets
 
