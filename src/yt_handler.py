@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
-from src.json_utils import load_tasks, save_tasks
+from json_utils import load_tasks, save_tasks
 import yt_dlp
 import os
 import threading
