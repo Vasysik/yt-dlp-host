@@ -124,5 +124,13 @@ def list_keys():
     keys = auth.get_all_keys()
     return jsonify(keys), 200
 
+@app.route('/permissions_check', methods=['POST'])
+def permission_check():
+    data = request.json
+    permissions = data.get('permissions')
+    if auth.permissions_check(permissions):
+        return jsonify({'message': 'Permissions granted'}), 200
+    return jsonify({'message': 'Insufficient permissions'}), 403
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
