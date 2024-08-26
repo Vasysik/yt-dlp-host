@@ -9,6 +9,6 @@ services:
       - ./api_keys.json:/app/api_keys.json
       - ./config.py:/app/config.py
     environment:
-      - FLASK_APP=src/server.py
+      - FLASK_APP=src.server:app
       - FLASK_RUN_HOST=0.0.0.0
     restart: unless-stopped
