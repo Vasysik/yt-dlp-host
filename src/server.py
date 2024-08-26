@@ -71,7 +71,7 @@ def status(task_id):
 
 @app.route('/files/<path:filename>', methods=['GET'])
 def get_file(filename):
-    file_path = os.path.abspath(os.path.join(os.getcwd(), DOWNLOAD_DIR, filename))
+    file_path = os.path.abspath(os.path.join(DOWNLOAD_DIR, filename))
     if not file_path.startswith(os.path.abspath(DOWNLOAD_DIR)):
         return jsonify({"error": "Access denied"}), 403
     
