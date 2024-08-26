@@ -128,7 +128,16 @@ def list_keys():
 def permissions_check():
     data = request.json
     permissions = data.get('permissions')
-    if auth.permissions_check(permissions):
+
+    api_key = request.headers.get('X-API-Key')
+    if not api_key:
+        return jsonify({'error': 'No API key provided'}), 401
+    key_info = auth.get_key_info(api_key)
+    if not key_info:
+        return jsonify({'error': 'Invalid API key'}), 401
+    current_permissions = key_info['permissions']
+
+    if set(permissions).issubset(current_permissions):
         return jsonify({'message': 'Permissions granted'}), 200
     return jsonify({'message': 'Insufficient permissions'}), 403
 
