@@ -5,8 +5,7 @@ services:
       - "5000:5000"
     volumes:
       - ./downloads:/app/downloads
-      - ./jsons/tasks.json:/app/tasks.json
-      - ./jsons/api_keys.json:/app/api_keys.json
+      - ./jsons:/app/jsons
       - ./config.py:/app/config.py
     environment:
       - FLASK_APP=src.server:app
