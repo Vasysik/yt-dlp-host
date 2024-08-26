@@ -1,4 +1,4 @@
-DOWNLOAD_DIR = 'downloads'
+DOWNLOAD_DIR = '/app/downloads'
 TASKS_FILE = 'jsons/tasks.json'
 KEYS_FILE = 'jsons/api_keys.json'
 TASK_CLEANUP_TIME = 10  # minutes
