@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify, send_from_directory
-from json_utils import load_tasks, save_tasks
+from src.json_utils import load_tasks, save_tasks
 from config import DOWNLOAD_DIR
-import yt_handler
-import auth
+import src.yt_handler as yt_handler
+import src.auth as auth
 import random
 import string
 import os

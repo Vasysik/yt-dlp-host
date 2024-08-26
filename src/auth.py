@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import request, jsonify
-from json_utils import load_keys, save_keys, load_tasks
+from src.json_utils import load_keys, save_keys, load_tasks
 from config import REQUEST_LIMIT, TASK_CLEANUP_TIME
 import secrets
 
@@ -22,7 +22,14 @@ def check_api_key(required_permission):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             api_key = request.headers.get('X-API-Key')
-            permissions = get_permissions(api_key)
+            if not api_key:
+                return jsonify({'error': 'No API key provided'}), 401
+            if not check_rate_limit(api_key):
+                return jsonify({'error': f'Rate limit exceeded. Maximum {REQUEST_LIMIT} requests per {TASK_CLEANUP_TIME} minutes.'}), 429
+            key_info = get_key_info(api_key)
+            if not key_info:
+                return jsonify({'error': 'Invalid API key'}), 401
+            permissions = key_info['permissions']
             if required_permission not in permissions:
                 return jsonify({'error': 'Insufficient permissions'}), 403
             
@@ -56,18 +63,21 @@ def delete_api_key(name):
 def get_all_keys():
     return load_keys()
 
-def get_permissions(api_key):
-    if not api_key:
-        return jsonify({'error': 'No API key provided'}), 401
+def get_key_info(api_key):
     keys = load_keys()
     key_info = next((item for item in keys.values() if item['key'] == api_key), None)
-    if not key_info:
-        return jsonify({'error': 'Invalid API key'}), 401
-    return key_info['permissions']
+    return key_info
 
 def permissions_check(permissions):
     api_key = request.headers.get('X-API-Key')
-    current_permissions = get_permissions(api_key)
+    if not api_key:
+        return jsonify({'error': 'No API key provided'}), 401
+    if not check_rate_limit(api_key):
+        return jsonify({'error': f'Rate limit exceeded. Maximum {REQUEST_LIMIT} requests per {TASK_CLEANUP_TIME} minutes.'}), 429
+    key_info = get_key_info(api_key)
+    if not key_info:
+        return jsonify({'error': 'Invalid API key'}), 401
+    current_permissions = key_info['permissions']
     return set(permissions).issubset(current_permissions)
 
 if load_keys() == {}: create_api_key("admin", ["admin", "download", "get_info"])
