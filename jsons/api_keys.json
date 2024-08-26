@@ -1,0 +1,10 @@
+{
+    "admin": {
+        "key": "ml9lcdNq5gxLJCz2e9nQmVwrWwcruWeMgP5V-FDvsV4",
+        "permissions": [
+            "admin",
+            "download",
+            "get_info"
+        ]
+    }
+}
