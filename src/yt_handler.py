@@ -65,8 +65,11 @@ def download_video(task_id, url, format, quality):
                 }]
             }
         else:
+            if quality.lower() == 'best': format_option = 'bestvideo+bestaudio/best'
+            else: format_option = f'bestvideo[height<={quality[:-1]}]+bestaudio/best'
+            
             ydl_opts = {
-                'format': f'bestvideo[height<={quality[:-1]}]+bestaudio/best',
+                'format': format_option,
                 'outtmpl': os.path.join(download_path, f'video.%(ext)s'),
                 'merge_output_format': 'mp4'
             }
