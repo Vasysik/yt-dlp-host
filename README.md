@@ -284,3 +284,7 @@ headers = {
 response = requests.get(f"{base_url}/status/{task_id}", headers=headers)
 print(response.json())
 ```
+
+## Contributing
+
+Contributions to simple-rpi-fan are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue on the GitHub repository. Pull requests are also encouraged.
