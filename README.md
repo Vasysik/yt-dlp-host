@@ -23,10 +23,6 @@ This API provides a set of endpoints for downloading YouTube videos, retrieving 
 
 All requests to the API must include an API key in the `X-API-Key` header. To obtain an API key, contact the API administrator or use the `/create_key` endpoint if you have admin permissions.
 
-## Rate Limiting
-
-The API implements rate limiting to ensure fair usage. Each API key is limited to 10 requests per 30 minutes. Exceeding this limit will result in a 429 (Too Many Requests) error.
-
 ## Endpoints
 
 ### Get Video (`/get_video`)
