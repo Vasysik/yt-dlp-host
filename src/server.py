@@ -141,8 +141,8 @@ def list_keys():
     keys = auth.get_all_keys()
     return jsonify(keys), 200
 
-@app.route('/permissions_check', methods=['POST'])
-def permissions_check():
+@app.route('/check_permissions', methods=['POST'])
+def check_permissions():
     data = request.json
     permissions = data.get('permissions')
 
