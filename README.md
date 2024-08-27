@@ -6,9 +6,11 @@ This API provides a set of endpoints for downloading YouTube videos, retrieving 
 
 ## Table of Contents
 
-1. [Authentication](#authentication)
-2. [Rate Limiting](#rate-limiting)
-3. [Endpoints](#endpoints)
+1. [Running the Server](#running-the-server)
+2. [Configuration](#configuration)
+3. [Authentication](#authentication)
+4. [Rate Limiting](#rate-limiting)
+5. [Endpoints](#endpoints)
    - [Get Video (`/get_video`)](#get-video-get_video)
    - [Get Video Info (`/get_info`)](#get-video-info-get_info)
    - [Create API Key (`/create_key`)](#create-api-key-create_key)
@@ -16,8 +18,36 @@ This API provides a set of endpoints for downloading YouTube videos, retrieving 
    - [List API Keys (`/list_keys`)](#list-api-keys-list_keys)
    - [Get Task Status (`/status/<task_id>`)](#get-task-status-statustask_id)
    - [Get File (`/files/<path:filename>`)](#get-file-filespathfilename)
-4. [Error Handling](#error-handling)
-5. [Examples](#examples)
+6. [Error Handling](#error-handling)
+7. [Examples](#examples)
+
+## Running the Server
+
+To run the server, follow these steps:
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/your-username/youtube-downloader-api.git
+   cd youtube-downloader-api
+   ```
+
+2. Build and run the Docker container:
+   ```
+   docker-compose up --build
+   ```
+
+3. The server will be accessible at `http://localhost:5000`.
+
+## Configuration
+
+The server's configuration is defined in the `config.py` file. Here are the default values:
+
+- `DOWNLOAD_DIR`: The directory where downloaded files will be stored. Default is `'/app/downloads'`.
+- `TASKS_FILE`: The path to the JSON file that stores task information. Default is `'jsons/tasks.json'`.
+- `KEYS_FILE`: The path to the JSON file that stores API keys and their permissions. Default is `'jsons/api_keys.json'`.
+- `TASK_CLEANUP_TIME`: The time (in minutes) after which completed tasks will be removed. Default is `10`.
+- `REQUEST_LIMIT`: The maximum number of requests allowed within the `TASK_CLEANUP_TIME` period. Default is `20`.
+- `MAX_WORKERS`: The maximum number of concurrent workers for processing tasks. Default is `4`.
 
 ## Authentication
 
@@ -253,3 +283,4 @@ headers = {
 
 response = requests.get(f"{base_url}/status/{task_id}", headers=headers)
 print(response.json())
+```
