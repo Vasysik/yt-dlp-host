@@ -44,7 +44,7 @@ def get_info(task_id, url):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def get_video(task_id, url, file_type, quality):
+def get(task_id, url, type, quality="best"):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -54,7 +54,7 @@ def get_video(task_id, url, file_type, quality):
         if not os.path.exists(download_path):
             os.makedirs(download_path)
 
-        if file_type.lower() == 'audio':
+        if type.lower() == 'audio':
             ydl_opts = {
                 'format': 'bestaudio/best',
                 'outtmpl': os.path.join(download_path, f'audio.%(ext)s'),
@@ -119,7 +119,9 @@ def process_tasks():
         for task_id, task in list(tasks.items()):
             if task['status'] == 'waiting':
                 if task['task_type'] == 'get_video':
-                    executor.submit(get_video, task_id, task['url'], task['file_type'], task['quality'])
+                    executor.submit(get, task_id, task['url'], 'video', task['quality'])
+                elif task['task_type'] == 'get_audio':
+                    executor.submit(get, task_id, task['url'], 'audio')
                 elif task['task_type'] == 'get_info':
                     executor.submit(get_info, task_id, task['url'])
             elif task['status'] in ['completed', 'error']:

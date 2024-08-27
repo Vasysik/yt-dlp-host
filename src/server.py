@@ -18,13 +18,10 @@ def generate_random_id(length=16):
 def get_video():
     data = request.json
     url = data.get('url')
-    file_type = data.get('file_type')
     quality = data.get('quality', 'best')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
-    elif not file_type:
-        return jsonify({'status': 'error', 'message': 'File Type is required'}), 400
     
     task_id = generate_random_id()
     tasks = load_tasks()
@@ -33,8 +30,28 @@ def get_video():
         'status': 'waiting',
         'task_type': 'get_video',
         'url': url,
-        'file_type': file_type,
         'quality': quality
+    }
+    save_tasks(tasks)
+
+    return jsonify({'status': 'waiting', 'task_id': task_id})
+
+@app.route('/get_audio', methods=['POST'])
+@auth.check_api_key('get_audio')
+def get_video():
+    data = request.json
+    url = data.get('url')
+    
+    if not url:
+        return jsonify({'status': 'error', 'message': 'URL is required'}), 400
+    
+    task_id = generate_random_id()
+    tasks = load_tasks()
+    tasks[task_id] = {
+        'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
+        'status': 'waiting',
+        'task_type': 'get_audio',
+        'url': url
     }
     save_tasks(tasks)
 

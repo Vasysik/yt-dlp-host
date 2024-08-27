@@ -12,7 +12,8 @@ This API provides a set of endpoints for downloading YouTube videos, retrieving 
 4. [Rate Limiting](#rate-limiting)
 5. [Endpoints](#endpoints)
    - [Get Video (`/get_video`)](#get-video-get_video)
-   - [Get Video Info (`/get_info`)](#get-video-info-get_info)
+   - [Get Audio (`/get_audio`)](#get-audio-get_audio)
+   - [Get Info (`/get_info`)](#get-info-get_info)
    - [Create API Key (`/create_key`)](#create-api-key-create_key)
    - [Delete API Key (`/delete_key/<name>`)](#delete-api-key-delete_keyname)
    - [List API Keys (`/list_keys`)](#list-api-keys-list_keys)
@@ -68,13 +69,11 @@ Initiates a video get_video task from the specified URL.
   ```json
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
-      "file_type": "video",
       "quality": "1080p"
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the video to be downloaded.
-  - `file_type` (required): The type of final media ("video" or "audio").
   - `quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
 - **Permissions:** Requires the `get_video` permission.
 - **Response:**
@@ -85,7 +84,33 @@ Initiates a video get_video task from the specified URL.
   }
   ```
 
-### Get Video Info (`/get_info`)
+### Get Audio (`/get_audio`)
+
+Initiates a audio get_audio task from the specified URL.
+
+- **Method:** POST
+- **URL:** `/get_audio`
+- **Headers:**
+  - `X-API-Key`: Your API key
+  - `Content-Type`: application/json
+- **Body:**
+  ```json
+  {
+      "url": "https://youtu.be/1FPdtR_5KFo"
+  }
+  ```
+- **Parameters:**
+  - `url` (required): The URL of the audio to be downloaded.
+- **Permissions:** Requires the `get_audio` permission.
+- **Response:**
+  ```json
+  {
+      "status": "waiting",
+      "task_id": "abcdefgh12345678"
+  }
+  ```
+
+### Get Info (`/get_info`)
 
 Retrieves information about the video from the specified URL.
 
@@ -124,7 +149,7 @@ Creates a new API key with the specified permissions.
   ```json
   {
       "name": "user_key",
-      "permissions": ["get_video", "get_info"]
+      "permissions": ["get_video", "get_audio", "get_info"]
   }
   ```
 - **Parameters:**
@@ -169,11 +194,11 @@ Retrieves a list of all existing API keys.
   {
       "admin_key": {
           "key": "admin_api_key_here",
-          "permissions": ["admin", "get_video", "get_info"]
+          "permissions": ["admin", "get_video", "get_audio", "get_info"]
       },
       "user_key": {
           "key": "user_api_key_here",
-          "permissions": ["get_video", "get_info"]
+          "permissions": ["get_video", "get_audio", "get_info"]
       }
   }
   ```
@@ -192,8 +217,7 @@ Retrieves the status of a specific task by its ID.
   {
       "status": "completed",
       "task_type": "get_video",
-      "url": "https://youtu.be/1FPdtR_5KFo",
-      "file_type": "video",
+      "url": "https://youtu.be/1FPdtR_5KFo"
       "quality": "1080p",
       "file": "/files/abcdefgh12345678/video.mp4"
   }
@@ -260,7 +284,6 @@ headers = {
 
 data = {
     "url": "https://youtu.be/1FPdtR_5KFo",
-    "file_type": "video",
     "quality": "720p"
 }
 
