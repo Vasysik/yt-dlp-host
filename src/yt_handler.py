@@ -119,7 +119,7 @@ def process_tasks():
         for task_id, task in list(tasks.items()):
             if task['status'] == 'waiting':
                 if task['task_type'] == 'download':
-                    executor.submit(download_video, task_id, task['url'], task['format'], task['quality'])
+                    executor.submit(download_video, task_id, task['url'], task['type'], task['quality'])
                 elif task['task_type'] == 'get_info':
                     executor.submit(get_info, task_id, task['url'])
             elif task['status'] in ['completed', 'error']:
