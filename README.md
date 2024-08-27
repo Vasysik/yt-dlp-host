@@ -9,7 +9,7 @@ This API provides a set of endpoints for downloading YouTube videos, retrieving 
 1. [Authentication](#authentication)
 2. [Rate Limiting](#rate-limiting)
 3. [Endpoints](#endpoints)
-   - [Download Video (`/download`)](#download-video-download)
+   - [Get Video (`/get_video`)](#get-video-get_video)
    - [Get Video Info (`/get_info`)](#get-video-info-get_info)
    - [Create API Key (`/create_key`)](#create-api-key-create_key)
    - [Delete API Key (`/delete_key/<name>`)](#delete-api-key-delete_keyname)
@@ -29,12 +29,12 @@ The API implements rate limiting to ensure fair usage. Each API key is limited t
 
 ## Endpoints
 
-### Download Video (`/download`)
+### Get Video (`/get_video`)
 
-Initiates a video download task from the specified URL.
+Initiates a video get_video task from the specified URL.
 
 - **Method:** POST
-- **URL:** `/download`
+- **URL:** `/get_video`
 - **Headers:**
   - `X-API-Key`: Your API key
   - `Content-Type`: application/json
@@ -50,7 +50,7 @@ Initiates a video download task from the specified URL.
   - `url` (required): The URL of the video to be downloaded.
   - `type` (required): The type of media ("video" or "audio").
   - `quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
-- **Permissions:** Requires the `download` permission.
+- **Permissions:** Requires the `get_video` permission.
 - **Response:**
   ```json
   {
@@ -98,7 +98,7 @@ Creates a new API key with the specified permissions.
   ```json
   {
       "name": "user_key",
-      "permissions": ["download", "get_info"]
+      "permissions": ["get_video", "get_info"]
   }
   ```
 - **Parameters:**
@@ -143,11 +143,11 @@ Retrieves a list of all existing API keys.
   {
       "admin_key": {
           "key": "admin_api_key_here",
-          "permissions": ["admin", "download", "get_info"]
+          "permissions": ["admin", "get_video", "get_info"]
       },
       "user_key": {
           "key": "user_api_key_here",
-          "permissions": ["download", "get_info"]
+          "permissions": ["get_video", "get_info"]
       }
   }
   ```
@@ -165,7 +165,7 @@ Retrieves the status of a specific task by its ID.
   ```json
   {
       "status": "completed",
-      "task_type": "download",
+      "task_type": "get_video",
       "url": "https://youtu.be/1FPdtR_5KFo",
       "type": "video",
       "quality": "1080p",
@@ -219,7 +219,7 @@ Common error codes:
 
 ## Examples
 
-### Downloading a video
+### Getting a video
 
 ```python
 import requests
@@ -238,7 +238,7 @@ data = {
     "quality": "720p"
 }
 
-response = requests.post(f"{base_url}/download", json=data, headers=headers)
+response = requests.post(f"{base_url}/get_video", json=data, headers=headers)
 print(response.json())
 ```
 

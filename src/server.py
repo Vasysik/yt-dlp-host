@@ -13,9 +13,9 @@ app = Flask(__name__)
 def generate_random_id(length=16):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
-@app.route('/download', methods=['POST'])
-@auth.check_api_key('download')
-def download():
+@app.route('/get_video', methods=['POST'])
+@auth.check_api_key('get_video')
+def get_video():
     data = request.json
     url = data.get('url')
     type = data.get('type')
@@ -31,7 +31,7 @@ def download():
     tasks[task_id] = {
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
         'status': 'waiting',
-        'task_type': 'download',
+        'task_type': 'get_video',
         'url': url,
         'type': type,
         'quality': quality

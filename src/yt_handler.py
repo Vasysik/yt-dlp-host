@@ -44,7 +44,7 @@ def get_info(task_id, url):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def download_video(task_id, url, type, quality):
+def get_video(task_id, url, type, quality):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -118,8 +118,8 @@ def process_tasks():
         current_time = datetime.now()
         for task_id, task in list(tasks.items()):
             if task['status'] == 'waiting':
-                if task['task_type'] == 'download':
-                    executor.submit(download_video, task_id, task['url'], task['type'], task['quality'])
+                if task['task_type'] == 'get_video':
+                    executor.submit(get_video, task_id, task['url'], task['type'], task['quality'])
                 elif task['task_type'] == 'get_info':
                     executor.submit(get_info, task_id, task['url'])
             elif task['status'] in ['completed', 'error']:
