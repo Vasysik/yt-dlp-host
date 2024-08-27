@@ -18,13 +18,13 @@ def generate_random_id(length=16):
 def download():
     data = request.json
     url = data.get('url')
-    format = data.get('format')
-    quality = data.get('quality', '360p')
+    type = data.get('type')
+    quality = data.get('quality', 'best')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
-    elif not format:
-        return jsonify({'status': 'error', 'message': 'Format is required'}), 400
+    elif not type:
+        return jsonify({'status': 'error', 'message': 'Type is required'}), 400
     
     task_id = generate_random_id()
     tasks = load_tasks()
@@ -33,7 +33,7 @@ def download():
         'status': 'waiting',
         'task_type': 'download',
         'url': url,
-        'format': format,
+        'type': type,
         'quality': quality
     }
     save_tasks(tasks)
@@ -48,7 +48,7 @@ def get_info():
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
-
+    
     task_id = generate_random_id()
     tasks = load_tasks()
     tasks[task_id] = {

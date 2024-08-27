@@ -42,14 +42,14 @@ Initiates a video download task from the specified URL.
   ```json
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
-      "format": "video",
+      "type": "video",
       "quality": "1080p"
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the video to be downloaded.
-  - `format` (required): The format of the video ("video" or "audio").
-  - `quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p"). Default is "360p".
+  - `type` (required): The type of media ("video" or "audio").
+  - `quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
 - **Permissions:** Requires the `download` permission.
 - **Response:**
   ```json
@@ -167,7 +167,7 @@ Retrieves the status of a specific task by its ID.
       "status": "completed",
       "task_type": "download",
       "url": "https://youtu.be/1FPdtR_5KFo",
-      "format": "video",
+      "type": "video",
       "quality": "1080p",
       "file": "/files/abcdefgh12345678/video.mp4"
   }
@@ -234,7 +234,7 @@ headers = {
 
 data = {
     "url": "https://youtu.be/1FPdtR_5KFo",
-    "format": "video",
+    "type": "video",
     "quality": "720p"
 }
 
