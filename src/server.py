@@ -38,7 +38,7 @@ def get_video():
 
 @app.route('/get_audio', methods=['POST'])
 @auth.check_api_key('get_audio')
-def get_video():
+def get_audio():
     data = request.json
     url = data.get('url')
     
