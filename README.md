@@ -287,4 +287,4 @@ print(response.json())
 
 ## Contributing
 
-Contributions to simple-rpi-fan are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue on the GitHub repository. Pull requests are also encouraged.
+Contributions to yt-dlp-host are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue on the GitHub repository. Pull requests are also encouraged.
