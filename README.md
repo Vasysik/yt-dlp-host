@@ -17,6 +17,7 @@ This API provides a set of endpoints for downloading YouTube videos, retrieving 
    - [Create API Key (`/create_key`)](#create-api-key-create_key)
    - [Delete API Key (`/delete_key/<name>`)](#delete-api-key-delete_keyname)
    - [List API Keys (`/list_keys`)](#list-api-keys-list_keys)
+   - [Get API Key (`/get_key/<name>`)](#get-api-key-get_keyname)
    - [Get Task Status (`/status/<task_id>`)](#get-task-status-statustask_id)
    - [Get File (`/files/<path:filename>`)](#get-file-filespathfilename)
 6. [Error Handling](#error-handling)
@@ -52,7 +53,7 @@ The server's configuration is defined in the `config.py` file. Here are the defa
 
 ## Authentication
 
-All requests to the API must include an API key in the `X-API-Key` header. To obtain an API key, contact the API administrator or use the `/create_key` endpoint if you have admin permissions.
+All requests to the API must include an API key in the `X-API-Key` header. To obtain an API key, contact the API administrator or use the `/create_key` endpoint if you have create_key permissions.
 
 ## Endpoints
 
@@ -155,12 +156,13 @@ Creates a new API key with the specified permissions.
 - **Parameters:**
   - `name` (required): The name for the new API key.
   - `permissions` (required): A list of permissions for the new API key.
-- **Permissions:** Requires the `admin` permission.
+- **Permissions:** Requires the `create_key` permission.
 - **Response:**
   ```json
   {
       "message": "API key created successfully",
-      "key": "new_api_key_here"
+      "key": "new_api_key_here",
+      "name": "name"
   }
   ```
 
@@ -172,10 +174,11 @@ Deletes an existing API key by its name.
 - **URL:** `/delete_key/<name>`
 - **Headers:**
   - `X-API-Key`: Your admin API key
-- **Permissions:** Requires the `admin` permission.
+- **Permissions:** Requires the `delete_key` permission.
 - **Response:**
   ```json
   {
+      "name": "name", 
       "message": "API key deleted successfully"
   }
   ```
@@ -188,20 +191,42 @@ Retrieves a list of all existing API keys.
 - **URL:** `/list_keys`
 - **Headers:**
   - `X-API-Key`: Your admin API key
-- **Permissions:** Requires the `admin` permission.
+- **Permissions:** Requires the `list_keys` permission.
 - **Response:**
   ```json
   {
       "admin_key": {
           "key": "admin_api_key_here",
-          "permissions": ["admin", "get_video", "get_audio", "get_info"]
+          "name": "name", 
+          "permissions": ["create_key", "delete_key", "get_key", "list_keys", "get_video", "get_audio", "get_info"]
       },
       "user_key": {
           "key": "user_api_key_here",
+          "name": "name", 
           "permissions": ["get_video", "get_audio", "get_info"]
       }
   }
   ```
+
+  ### Get API Key (`/get_key/<name>`)
+
+  Gets an existing API key by its name.
+
+  - **Method:** DELETE
+  - **URL:** `/get_key/<name>`
+  - **Headers:**
+    - `X-API-Key`: Your admin API key
+  - **Permissions:** Requires the `get_key` permission.
+  - **Response:**
+    ```json
+    {
+      "message": "API key get successfully", 
+      "name": "name", 
+      "key": "user_api_key_here"
+    }
+    ```
+
+  ### List API Keys (`/list_keys`)
 
 ### Get Task Status (`/status/<task_id>`)
 

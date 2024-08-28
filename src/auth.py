@@ -58,6 +58,8 @@ def delete_api_key(name):
     if name in keys:
         del keys[name]
         save_keys(keys)
+        return True
+    return False
 
 def get_all_keys():
     return load_keys()
@@ -67,4 +69,4 @@ def get_key_info(api_key):
     key_info = next((item for item in keys.values() if item['key'] == api_key), None)
     return key_info
 
-if load_keys() == {}: create_api_key("admin", ["admin", "get_video", "get_audio", "get_info"])
+if load_keys() == {}: create_api_key("admin", ["create_key", "delete_key", "get_key", "list_keys", "get_video", "get_audio", "get_info"])

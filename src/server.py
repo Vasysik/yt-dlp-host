@@ -117,26 +117,33 @@ def get_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename)
 
 @app.route('/create_key', methods=['POST'])
-@auth.check_api_key('admin')
+@auth.check_api_key('create_key')
 def create_key():
     data = request.json
     name = data.get('name')
     permissions = data.get('permissions')
     if not name or not permissions:
         return jsonify({'error': 'Name and permissions are required'}), 400
-    if 'admin' in permissions:
-        return jsonify({'error': 'Insufficient permissions'}), 403
     new_key = auth.create_api_key(name, permissions)
-    return jsonify({'message': 'API key created successfully', 'key': new_key}), 201
+    return jsonify({'message': 'API key created successfully', 'name': name, 'key': new_key}), 201
 
 @app.route('/delete_key/<name>', methods=['DELETE'])
-@auth.check_api_key('admin')
+@auth.check_api_key('delete_key')
 def delete_key(name):
-    auth.delete_api_key(name)
-    return jsonify({'message': 'API key deleted successfully'}), 200
+    if auth.delete_api_key(name):
+        return jsonify({'message': 'API key deleted successfully', 'name': name}), 200
+    return jsonify({'error': 'The key name does not exist'}), 403
+
+@app.route('/get_key/<name>', methods=['DELETE'])
+@auth.check_api_key('get_key')
+def get_key(name):
+    keys = auth.get_all_keys()
+    if name in keys:
+        return jsonify({'message': 'API key get successfully', 'name': name, 'key': keys[name]['key']}), 200
+    return jsonify({'error': 'The key name does not exist'}), 403
 
 @app.route('/list_keys', methods=['GET'])
-@auth.check_api_key('admin')
+@auth.check_api_key('list_keys')
 def list_keys():
     keys = auth.get_all_keys()
     return jsonify(keys), 200
