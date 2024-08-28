@@ -16,7 +16,7 @@ This API provides a set of endpoints for downloading YouTube videos, retrieving 
    - [Get Info (`/get_info`)](#get-info-get_info)
    - [Create API Key (`/create_key`)](#create-api-key-create_key)
    - [Delete API Key (`/delete_key/<name>`)](#delete-api-key-delete_keyname)
-   - [List API Keys (`/keys_list`)](#list-api-keys-keys_list)
+   - [List API Keys (`/get_keys`)](#list-api-keys-get_keys)
    - [Get API Key (`/get_key/<name>`)](#get-api-key-get_keyname)
    - [Get Task Status (`/status/<task_id>`)](#get-task-status-statustask_id)
    - [Get File (`/files/<path:filename>`)](#get-file-filespathfilename)
@@ -183,22 +183,22 @@ Deletes an existing API key by its name.
   }
   ```
 
-### List API Keys (`/keys_list`)
+### List API Keys (`/get_keys`)
 
 Retrieves a list of all existing API keys.
 
 - **Method:** GET
-- **URL:** `/keys_list`
+- **URL:** `/get_keys`
 - **Headers:**
   - `X-API-Key`: Your admin API key
-- **Permissions:** Requires the `keys_list` permission.
+- **Permissions:** Requires the `get_keys` permission.
 - **Response:**
   ```json
   {
       "admin_key": {
           "key": "admin_api_key_here",
           "name": "name", 
-          "permissions": ["create_key", "delete_key", "get_key"],"keys_list": ["get_video", "get_audio", "get_info"]
+          "permissions": ["create_key", "delete_key", "get_key","get_keys", "get_video", "get_audio", "get_info"]
       },
       "user_key": {
           "key": "user_api_key_here",
@@ -226,7 +226,7 @@ Retrieves a list of all existing API keys.
     }
     ```
 
-  ### List API Keys (`/keys_list`)
+  ### List API Keys (`/get_keys`)
 
 ### Get Task Status (`/status/<task_id>`)
 

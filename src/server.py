@@ -134,7 +134,7 @@ def delete_key(name):
         return jsonify({'message': 'API key deleted successfully', 'name': name}), 200
     return jsonify({'error': 'The key name does not exist'}), 403
 
-@app.route('/get_key/<name>', methods=['DELETE'])
+@app.route('/get_key/<name>', methods=['GET'])
 @auth.check_api_key('get_key')
 def get_key(name):
     keys = auth.get_all_keys()
@@ -142,9 +142,9 @@ def get_key(name):
         return jsonify({'message': 'API key get successfully', 'name': name, 'key': keys[name]['key']}), 200
     return jsonify({'error': 'The key name does not exist'}), 403
 
-@app.route('/keys_list', methods=['GET'])
-@auth.check_api_key('keys_list')
-def keys_list():
+@app.route('/get_keys', methods=['GET'])
+@auth.check_api_key('get_keys')
+def get_keys():
     keys = auth.get_all_keys()
     return jsonify(keys), 200
 
