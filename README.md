@@ -2,7 +2,7 @@
 
 ## Overview
 
-This API provides a set of endpoints for downloading YouTube videos, retrieving video information, and managing API keys. It's designed to be simple to use while offering powerful functionality for video processing and information retrieval.
+This API offers a range of endpoints for downloading YouTube videos, retrieving video information, and managing API keys. It is designed to be user-friendly while providing robust functionality for video processing and information retrieval. The API leverages yt-dlp to handle video downloads and information retrieval efficiently on a dedicated host.
 
 ## Table of Contents
 
