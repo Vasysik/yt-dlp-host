@@ -105,13 +105,13 @@ def get_file(filename):
                 elif key == 'qualities':
                     qualities = set()
                     for f in data['formats']:
-                        if f.get('height'):
+                        if f.get('height') and int(f.get('height')) >= 144:
                             quality = f'{f["height"]}p'
-                        if f.get('fps'):
+                        if f.get('fps') and int(f.get('fps')) >= 15:
                             quality += str(int(f["fps"]))
-                        qualities.add(quality)
-                    filtered_data[key] = sorted(list(qualities), key=lambda x: int(x.split('p')[0]))
-
+                        if quality: qualities.add(quality)
+                    filtered_data[key] = sorted(list(qualities), key=lambda x: (int(x.split('p')[0]), int(x.split('p')[1]) if 'p' in x and x.split('p')[1] else 0))
+            
             if filtered_data:
                 return jsonify(filtered_data)
             else:
