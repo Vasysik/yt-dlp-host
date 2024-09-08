@@ -106,7 +106,10 @@ def get_file(filename):
                     qualities = set()
                     for f in data['formats']:
                         if f.get('height'):
-                            qualities.add(f'{f["height"]}p')
+                            quality = f'{f["height"]}p'
+                        if f.get('fps'):
+                            quality += str(int(f["fps"]))
+                        qualities.add(quality)
                     filtered_data[key] = sorted(list(qualities), key=lambda x: int(x[:-1]))
 
             if filtered_data:
