@@ -67,9 +67,13 @@ def get(task_id, url, type, quality="best"):
         else:
             if quality.lower() == 'best': format_option = 'bestvideo+bestaudio/best'
             elif len(quality.split("p")) > 1:
-                format_option = f'bestvideo[fps<={quality.split("p")[1]}][height<={quality.split("p")[0]}]+bestaudio/best'
+                height, fps = quality.split("p")
+                format_option = f'bestvideo[height<={height}]'
+                if fps: format_option += f'[fps<={fps}]'
+                format_option += '+bestaudio/best'
             else:
-                format_option = f'bestvideo[height<={quality.split("p")[0]}]+bestaudio/best'
+                height = quality.split("p")[0]
+                format_option = f'bestvideo[height<={height}]+bestaudio/best'
             
             ydl_opts = {
                 'format': format_option,
