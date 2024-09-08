@@ -110,7 +110,7 @@ def get_file(filename):
                         if f.get('fps'):
                             quality += str(int(f["fps"]))
                         qualities.add(quality)
-                    filtered_data[key] = sorted(list(qualities), key=lambda x: int(x[:-1]))
+                    filtered_data[key] = sorted(list(qualities), key=lambda x: int(x.split('p')[0]))
 
             if filtered_data:
                 return jsonify(filtered_data)
