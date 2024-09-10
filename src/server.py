@@ -105,14 +105,21 @@ def get_file(filename):
                     filtered_data[key] = data[key]
                 elif key == 'qualities':
                     qualities = {}
+                    best_audio_size = 0
+                    for f in data['formats']:
+                        if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
+                            audio_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
+                            if audio_size > best_audio_size:
+                                best_audio_size = audio_size
                     for f in data['formats']:
                         if f.get('height') and f.get('fps') and int(f.get('height')) >= 144 and int(f.get('fps')) >= 15:
                             quality_key = f"{f['height']}p{int(f['fps'])}"
+                            video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
                             qualities[quality_key] = {
                                 "height": int(f['height']),
                                 "width": int(f['width']),
                                 "fps": int(f['fps']),
-                                "filesize": int(f.get('filesize') or f.get('filesize_approx') or 0)
+                                "filesize": video_size + best_audio_size
                             }
                     filtered_data[key] = dict(sorted(qualities.items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))
 
