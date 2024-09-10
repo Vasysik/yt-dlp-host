@@ -111,7 +111,7 @@ def get_file(filename):
                                 "height": int(f['height']),
                                 "width": int(f['width']),
                                 "fps": int(f['fps']),
-                                "filesize": int(f['filesize_approx'])
+                                "filesize": int(f.get('filesize') or f.get('filesize_approx') or 0)
                             }
                     filtered_data[key] = {"qualities": dict(sorted(qualities.items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))}
 
