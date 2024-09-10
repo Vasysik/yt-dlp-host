@@ -113,7 +113,7 @@ def get_file(filename):
                                 "fps": int(f['fps']),
                                 "filesize": int(f.get('filesize') or f.get('filesize_approx') or 0)
                             }
-                    filtered_data[key] = dict(sorted(qualities.items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))
+                    filtered_data[key] = {k: qualities[k] for k in sorted(qualities.keys(), key=lambda x: (int(x.split('p')[0]), int(x.split('p')[1])))}
 
             if filtered_data:
                 return jsonify(filtered_data)
