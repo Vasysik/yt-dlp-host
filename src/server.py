@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
+from collections import OrderedDict
 from src.json_utils import load_tasks, save_tasks
 from config import DOWNLOAD_DIR
 import src.yt_handler as yt_handler
@@ -12,6 +13,13 @@ app = Flask(__name__)
 
 def generate_random_id(length=16):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+class OrderedEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, OrderedDict):
+            return {k: self.default(v) for k, v in obj.items()}
+        return super(OrderedEncoder, self).default(obj)
+app.json = OrderedEncoder
 
 @app.route('/get_video', methods=['POST'])
 @auth.check_api_key('get_video')
@@ -113,7 +121,7 @@ def get_file(filename):
                                 "fps": int(f['fps']),
                                 "filesize": int(f.get('filesize') or f.get('filesize_approx') or 0)
                             }
-                    filtered_data[key] = {k: qualities[k] for k in sorted(qualities.keys(), key=lambda x: (int(x.split('p')[0]), int(x.split('p')[1])))}
+                    filtered_data[key] = dict(sorted(qualities.items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))
 
             if filtered_data:
                 return jsonify(filtered_data)
