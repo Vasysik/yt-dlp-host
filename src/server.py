@@ -112,7 +112,7 @@ def get_file(filename):
                             if audio_size > best_audio_size:
                                 best_audio_size = audio_size
                     for f in data['formats']:
-                        if f.get('height') and f.get('fps') and int(f.get('height')) >= 128 and int(f.get('fps')) >= 15:
+                        if f.get('height') and f.get('fps') and int(f.get('height')) >= 128 and int(f.get('fps')) >= 10:
                             quality_key = f"{f['height']}p{int(f['fps'])}"
                             video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
                             qualities[quality_key] = {
