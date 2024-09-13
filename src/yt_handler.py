@@ -2,11 +2,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
 from src.json_utils import load_tasks, save_tasks
-import yt_dlp
-import os
-import threading
-import json
-import time
+import yt_dlp, os, threading, json, time, shutil
 
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
@@ -105,8 +101,8 @@ def get_live(task_id, url, type, start, duration, quality="best"):
             os.makedirs(download_path)
 
         current_time = int(time.time())
-        start_time = current_time - start * 60
-        end_time = start_time + duration * 60
+        start_time = current_time - start
+        end_time = start_time + duration
 
         if type.lower() == 'audio':
             format_option = 'bestaudio/best'
@@ -165,11 +161,20 @@ def cleanup_task(task_id):
     tasks = load_tasks()
     download_path = os.path.join(DOWNLOAD_DIR, task_id)
     if os.path.exists(download_path):
-        for file in os.listdir(download_path):
-            os.remove(os.path.join(download_path, file))
-        os.rmdir(download_path)
-    del tasks[task_id]
-    save_tasks(tasks)
+        shutil.rmtree(download_path, ignore_errors=True)
+    if task_id in tasks:
+        del tasks[task_id]
+        save_tasks(tasks)
+
+def cleanup_orphaned_folders():
+    tasks = load_tasks()
+    task_ids = set(tasks.keys())
+    
+    for folder in os.listdir(DOWNLOAD_DIR):
+        folder_path = os.path.join(DOWNLOAD_DIR, folder)
+        if os.path.isdir(folder_path) and folder not in task_ids:
+            shutil.rmtree(folder_path, ignore_errors=True)
+            print(f"Removed orphaned folder: {folder_path}")
 
 def cleanup_processing_tasks():
     tasks = load_tasks()
@@ -200,8 +205,11 @@ def process_tasks():
                 completed_time = datetime.fromisoformat(task['completed_time'])
                 if current_time - completed_time > timedelta(minutes=TASK_CLEANUP_TIME):
                     cleanup_task(task_id)
+        if current_time.minute % 5 == 0 and current_time.second == 0:
+            cleanup_orphaned_folders()
         time.sleep(1)
 
 cleanup_processing_tasks()
+cleanup_orphaned_folders()
 thread = threading.Thread(target=process_tasks, daemon=True)
 thread.start()

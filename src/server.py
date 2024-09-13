@@ -85,7 +85,7 @@ def get_live_video():
     data = request.json
     url = data.get('url')
     start = data.get('start', 0)
-    duration = data.get('duration', 5)
+    duration = data.get('duration')
     quality = data.get('quality', 'best')
     
     if not url:
