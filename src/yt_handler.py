@@ -133,7 +133,7 @@ def get_live(task_id, url, type, start, duration, quality="best"):
         ydl_opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
-            'download_ranges': lambda info: [{
+            'download_ranges': lambda info, *args: [{
                 'start_time': start_time,
                 'end_time': end_time,
             }],

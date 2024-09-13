@@ -69,4 +69,4 @@ def get_key_info(api_key):
     key_info = next((item for item in keys.values() if item['key'] == api_key), None)
     return key_info
 
-if load_keys() == {}: create_api_key("admin", ["create_key", "delete_key", "get_key", "get_keys", "get_video", "get_audio", "get_info"])
+if load_keys() == {}: create_api_key("admin", ["create_key", "delete_key", "get_key", "get_keys", "get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"])
