@@ -13,6 +13,8 @@ This API offers a range of endpoints for downloading YouTube videos, retrieving 
 5. [Endpoints](#endpoints)
    - [Get Video (`/get_video`)](#get-video-get_video)
    - [Get Audio (`/get_audio`)](#get-audio-get_audio)
+   - [Get Live Video (`/get_video`)](#get-live-video-get_live_video)
+   - [Get Live Audio (`/get_audio`)](#get-live-audio-get_live_audio)
    - [Get Info (`/get_info`)](#get-info-get_info)
    - [Create API Key (`/create_key`)](#create-api-key-create_key)
    - [Delete API Key (`/delete_key/<name>`)](#delete-api-key-delete_keyname)
@@ -111,6 +113,68 @@ Initiates a audio get_audio task from the specified URL.
   }
   ```
 
+### Get Live Video (`/get_live_video`)
+
+Initiates a video get_live_video task from the specified URL.
+
+- **Method:** POST
+- **URL:** `/get_live_video`
+- **Headers:**
+  - `X-API-Key`: Your API key
+  - `Content-Type`: application/json
+- **Body:**
+  ```json
+  {
+      "url": "https://youtu.be/1FPdtR_5KFo",
+      "start": 0,
+      "duration": 300,
+      "quality": "1080p"
+  }
+  ```
+- **Parameters:**
+  - `url` (required): The URL of the live stream to be downloaded.
+  - `start` (optional): The starting point in seconds for the stream recording.
+  - `duration` (required): The length of the recording in seconds from the start point.
+  - `quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
+- **Permissions:** Requires the `get_live_video` permission.
+- **Response:**
+  ```json
+  {
+      "status": "waiting",
+      "task_id": "abcdefgh12345678"
+  }
+  ```
+
+### Get Live Audio (`/get_live_audio`)
+
+Initiates a audio get_live_audio task from the specified URL.
+
+- **Method:** POST
+- **URL:** `/get_live_audio`
+- **Headers:**
+  - `X-API-Key`: Your API key
+  - `Content-Type`: application/json
+- **Body:**
+  ```json
+  {
+      "url": "https://youtu.be/1FPdtR_5KFo",
+      "start": 0,
+      "duration": 300
+  }
+  ```
+- **Parameters:**
+  - `url` (required): The URL of the live stream to be downloaded.
+  - `start` (optional): The starting point in seconds for the stream recording.
+  - `duration` (required): The length of the recording in seconds from the start point.
+- **Permissions:** Requires the `get_live_audio` permission.
+- **Response:**
+  ```json
+  {
+      "status": "waiting",
+      "task_id": "abcdefgh12345678"
+  }
+  ```
+
 ### Get Info (`/get_info`)
 
 Retrieves information about the video from the specified URL.
@@ -150,7 +214,7 @@ Creates a new API key with the specified permissions.
   ```json
   {
       "name": "user_key",
-      "permissions": ["get_video", "get_audio", "get_info"]
+      "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"]
   }
   ```
 - **Parameters:**
@@ -198,12 +262,12 @@ Retrieves a list of all existing API keys.
       "admin_key": {
           "key": "admin_api_key_here",
           "name": "name", 
-          "permissions": ["create_key", "delete_key", "get_key","get_keys", "get_video", "get_audio", "get_info"]
+          "permissions": ["create_key", "delete_key", "get_key", "get_keys", "get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"]
       },
       "user_key": {
           "key": "user_api_key_here",
           "name": "name", 
-          "permissions": ["get_video", "get_audio", "get_info"]
+          "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"]
       }
   }
   ```

@@ -79,12 +79,63 @@ def get_info():
 
     return jsonify({'status': 'waiting', 'task_id': task_id})
 
+@app.route('/get_live_video', methods=['POST'])
+@auth.check_api_key('get_live_video')
+def get_live_video():
+    data = request.json
+    url = data.get('url')
+    start = data.get('start', 0)
+    duration = data.get('duration')
+    quality = data.get('quality', 'best')
+    
+    if not url:
+        return jsonify({'status': 'error', 'message': 'URL is required'}), 400
+    
+    task_id = generate_random_id()
+    tasks = load_tasks()
+    tasks[task_id] = {
+        'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
+        'status': 'waiting',
+        'task_type': 'get_live_video',
+        'url': url,
+        'start': start,
+        'duration': duration,
+        'quality': quality
+    }
+    save_tasks(tasks)
+
+    return jsonify({'status': 'waiting', 'task_id': task_id})
+
+@app.route('/get_live_audio', methods=['POST'])
+@auth.check_api_key('get_live_audio')
+def get_live_audio():
+    data = request.json
+    url = data.get('url')
+    start = data.get('start', 0)
+    duration = data.get('duration', 5)
+    
+    if not url:
+        return jsonify({'status': 'error', 'message': 'URL is required'}), 400
+    
+    task_id = generate_random_id()
+    tasks = load_tasks()
+    tasks[task_id] = {
+        'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
+        'status': 'waiting',
+        'task_type': 'get_live_audio',
+        'url': url,
+        'start': start,
+        'duration': duration
+    }
+    save_tasks(tasks)
+
+    return jsonify({'status': 'waiting', 'task_id': task_id})
+
 @app.route('/status/<task_id>', methods=['GET'])
 def status(task_id):
     tasks = load_tasks()
     if task_id not in tasks:
         return jsonify({'status': 'error', 'message': 'Task ID not found'}), 404
-
     return jsonify(tasks[task_id])
 
 @app.route('/files/<path:filename>', methods=['GET'])

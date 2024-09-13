@@ -2,11 +2,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
 from src.json_utils import load_tasks, save_tasks
-import yt_dlp
-import os
-import threading
-import json
-import time
+import yt_dlp, os, threading, json, time, shutil
 
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
@@ -94,6 +90,67 @@ def get(task_id, url, type, quality="best"):
     except Exception as e:
         handle_task_error(task_id, e)
 
+def get_live(task_id, url, type, start, duration, quality="best"):
+    try:
+        tasks = load_tasks()
+        tasks[task_id].update(status='processing')
+        save_tasks(tasks)
+        
+        download_path = os.path.join(DOWNLOAD_DIR, task_id)
+        if not os.path.exists(download_path):
+            os.makedirs(download_path)
+
+        current_time = int(time.time())
+        start_time = current_time - start
+        end_time = start_time + duration
+
+        if type.lower() == 'audio':
+            format_option = 'bestaudio/best'
+            postprocessors = [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }]
+            output_template = f'live_audio.%(ext)s'
+        else:
+            if quality.lower() == 'best':
+                format_option = 'bestvideo+bestaudio/best'
+            elif len(quality.split("p")) > 1:
+                height, fps = quality.split("p")
+                format_option = f'bestvideo[height<={height}]'
+                if fps: format_option += f'[fps<={fps}]'
+                format_option += '+bestaudio/best'
+            else:
+                height = quality.split("p")[0]
+                format_option = f'bestvideo[height<={height}]+bestaudio/best'
+            postprocessors = []
+            output_template = f'live_video.%(ext)s'
+
+        ydl_opts = {
+            'format': format_option,
+            'outtmpl': os.path.join(download_path, output_template),
+            'download_ranges': lambda info, *args: [{
+                'start_time': start_time,
+                'end_time': end_time,
+            }],
+            'postprocessors': postprocessors,
+            'merge_output_format': 'mp4' if type.lower() == 'video' else None,
+            'force_generic_extractor': True
+        }
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            tasks = load_tasks()
+            tasks[task_id].update(status='completed')
+            tasks[task_id]['completed_time'] = datetime.now().isoformat()
+            tasks[task_id]['file'] = f'/files/{task_id}/' + os.listdir(download_path)[0]
+            save_tasks(tasks)
+        except Exception as e:
+            handle_task_error(task_id, e)
+    except Exception as e:
+        handle_task_error(task_id, e)
+
 def handle_task_error(task_id, error):
     tasks = load_tasks()
     tasks[task_id].update(status='error', error=str(error), completed_time=datetime.now().isoformat())
@@ -104,11 +161,20 @@ def cleanup_task(task_id):
     tasks = load_tasks()
     download_path = os.path.join(DOWNLOAD_DIR, task_id)
     if os.path.exists(download_path):
-        for file in os.listdir(download_path):
-            os.remove(os.path.join(download_path, file))
-        os.rmdir(download_path)
-    del tasks[task_id]
-    save_tasks(tasks)
+        shutil.rmtree(download_path, ignore_errors=True)
+    if task_id in tasks:
+        del tasks[task_id]
+        save_tasks(tasks)
+
+def cleanup_orphaned_folders():
+    tasks = load_tasks()
+    task_ids = set(tasks.keys())
+    
+    for folder in os.listdir(DOWNLOAD_DIR):
+        folder_path = os.path.join(DOWNLOAD_DIR, folder)
+        if os.path.isdir(folder_path) and folder not in task_ids:
+            shutil.rmtree(folder_path, ignore_errors=True)
+            print(f"Removed orphaned folder: {folder_path}")
 
 def cleanup_processing_tasks():
     tasks = load_tasks()
@@ -131,12 +197,19 @@ def process_tasks():
                     executor.submit(get, task_id, task['url'], 'audio')
                 elif task['task_type'] == 'get_info':
                     executor.submit(get_info, task_id, task['url'])
+                elif task['task_type'] == 'get_live_video':
+                    executor.submit(get_live, task_id, task['url'], 'video', task['start'], task['duration'], task['quality'])
+                elif task['task_type'] == 'get_live_audio':
+                    executor.submit(get_live, task_id, task['url'], 'audio', task['start'], task['duration'])
             elif task['status'] in ['completed', 'error']:
                 completed_time = datetime.fromisoformat(task['completed_time'])
                 if current_time - completed_time > timedelta(minutes=TASK_CLEANUP_TIME):
                     cleanup_task(task_id)
+        if current_time.minute % 5 == 0 and current_time.second == 0:
+            cleanup_orphaned_folders()
         time.sleep(1)
 
 cleanup_processing_tasks()
+cleanup_orphaned_folders()
 thread = threading.Thread(target=process_tasks, daemon=True)
 thread.start()
