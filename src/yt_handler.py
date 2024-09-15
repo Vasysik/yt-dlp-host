@@ -19,7 +19,7 @@ def get_info(task_id, url):
         if not os.path.exists(download_path):
             os.makedirs(download_path)
 
-        ydl_opts = {'quiet': True, 'no_warnings': True}
+        ydl_opts = {'quiet': True, 'no_warnings': True, 'extract_flat': True, 'skip_download': True}
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
