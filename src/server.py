@@ -163,7 +163,7 @@ def get_file(filename):
                 if key in data:
                     filtered_data[key] = data[key]
                 elif key == 'qualities':
-                    qualities = {}
+                    qualities = {"audio": {}, "video": {}}
                     for f in data['formats']:
                         if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('abr'):
                             qualities["audio"][f"{f['abr']}kbps"] = {
@@ -174,7 +174,7 @@ def get_file(filename):
                             }
                         elif f.get('acodec') == 'none' and f.get('vcodec') != 'none' and f.get('height') and f.get('fps') and f.get('format_note') != 'storyboard':
                             video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
-                            qualities[f"{f['height']}p{int(f['fps'])}"] = {
+                            qualities["video"][f"{f['height']}p{int(f['fps'])}"] = {
                                 "height": int(f['height']),
                                 "width": int(f['width']),
                                 "fps": int(f['fps']),
