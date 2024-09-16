@@ -40,7 +40,7 @@ def get_info(task_id, url):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def get(task_id, url, type, quality="best"):
+def get(task_id, url, type, quality="best", audio_quality="best"):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -51,30 +51,36 @@ def get(task_id, url, type, quality="best"):
             os.makedirs(download_path)
 
         if type.lower() == 'audio':
+            if audio_quality.lower() == 'best': format_option = 'bestaudio/best'
+            else: format_option = f'bestaudio[abr<={audio_quality}]/best'
             ydl_opts = {
-                'format': 'bestaudio/best',
+                'format': format_option,
                 'outtmpl': os.path.join(download_path, f'audio.%(ext)s'),
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
+                    'preferredcodec': 'mp3'
                 }]
             }
         else:
-            if quality.lower() == 'best': format_option = 'bestvideo+bestaudio/best'
+            if quality.lower() == 'best': video_format = 'bestvideo'
             elif len(quality.split("p")) > 1:
                 height, fps = quality.split("p")
-                format_option = f'bestvideo[height<={height}]'
-                if fps: format_option += f'[fps<={fps}]'
-                format_option += '+bestaudio/best'
+                video_format = f'bestvideo[height<={height}]'
+                if fps: video_format += f'[fps<={fps}]'
             else:
                 height = quality.split("p")[0]
-                format_option = f'bestvideo[height<={height}]+bestaudio/best'
-            
+                video_format = f'bestvideo[height<={height}]'
+
+            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
+            else: audio_format = f'bestaudio[abr<={audio_quality}]'
+
             ydl_opts = {
-                'format': format_option,
+                'format': f'{video_format}+{audio_format}/best',
                 'outtmpl': os.path.join(download_path, f'video.%(ext)s'),
-                'merge_output_format': 'mp4'
+                'postprocessors': [{
+                    'key': 'FFmpegExtractVideo',
+                    'preferredcodec': 'mp4'
+                }]
             }
         
         try:

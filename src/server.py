@@ -156,12 +156,14 @@ def get_file(filename):
                     filtered_data[key] = data[key]
                 elif key == 'qualities':
                     qualities = {}
-                    best_audio_size = 0
                     for f in data['formats']:
                         if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
+                            audio_quality = f.get('abr', 0)
                             audio_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
-                            if audio_size > best_audio_size:
-                                best_audio_size = audio_size
+                            qualities["audio"][f"{audio_quality}kbps"] = {
+                                "abr": audio_quality,
+                                "filesize": audio_size
+                            }
                     for f in data['formats']:
                         if f.get('height') and f.get('fps') and int(f.get('height')) >= 144 and int(f.get('fps')) >= 15:
                             quality_key = f"{f['height']}p{int(f['fps'])}"
@@ -170,9 +172,11 @@ def get_file(filename):
                                 "height": int(f['height']),
                                 "width": int(f['width']),
                                 "fps": int(f['fps']),
-                                "filesize": video_size + best_audio_size
+                                "filesize": video_size
                             }
-                    filtered_data[key] = dict(sorted(qualities.items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))
+                    qualities["video"] = dict(sorted(qualities["video"].items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))
+                    qualities["audio"] = dict(sorted(qualities["audio"].items(), key=lambda x: int(x[0].split('kbps')[0])))
+                    filtered_data[key] = qualities
 
             if filtered_data:
                 return jsonify(filtered_data)
