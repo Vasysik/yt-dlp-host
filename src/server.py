@@ -165,21 +165,22 @@ def get_file(filename):
                 elif key == 'qualities':
                     qualities = {}
                     for f in data['formats']:
-                        if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
-                            audio_quality = f.get('abr', 0)
-                            audio_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
-                            qualities["audio"][f"{audio_quality}kbps"] = {
-                                "abr": audio_quality,
-                                "filesize": audio_size
+                        if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('abr'):
+                            qualities["audio"][f"{f['abr']}kbps"] = {
+                                "abr": int(f['abr']),
+                                "acodec": f['acodec'],
+                                "audio_channels": int(f.get('audio_channels', 0)),
+                                "filesize": int(f.get('filesize') or f.get('filesize_approx') or 0)
                             }
-                    for f in data['formats']:
-                        if f.get('height') and f.get('fps'):
-                            quality_key = f"{f['height']}p{int(f['fps'])}"
+                        elif f.get('acodec') == 'none' and f.get('vcodec') != 'none' and f.get('height') and f.get('fps') and f.get('format_note') != 'storyboard':
                             video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
-                            qualities[quality_key] = {
+                            qualities[f"{f['height']}p{int(f['fps'])}"] = {
                                 "height": int(f['height']),
                                 "width": int(f['width']),
                                 "fps": int(f['fps']),
+                                "vcodec": f['vcodec'],
+                                "format_note": f.get('format_note', 'unknown'),
+                                "dynamic_range": f.get('dynamic_range', 'unknown'),
                                 "filesize": video_size
                             }
                     qualities["video"] = dict(sorted(qualities["video"].items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))
