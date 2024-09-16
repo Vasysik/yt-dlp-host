@@ -51,7 +51,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             os.makedirs(download_path)
 
         if type.lower() == 'audio':
-            if audio_quality.lower() == 'best': format_option = 'bestaudio/best'
+            if audio_quality.lower() == 'best': audio_format = 'bestaudio/best'
             else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
             
             format_option = f'{audio_format}/best'
@@ -109,7 +109,7 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
         end_time = start_time + duration
 
         if type.lower() == 'audio':
-            if audio_quality.lower() == 'best': format_option = 'bestaudio/best'
+            if audio_quality.lower() == 'best': audio_format = 'bestaudio/best'
             else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
             
             format_option = f'{audio_format}/best'
