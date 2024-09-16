@@ -166,7 +166,7 @@ def get_file(filename):
                     qualities = {"audio": {}, "video": {}}
                     for f in data['formats']:
                         if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('abr'):
-                            qualities["audio"][f"{f['abr']}kbps"] = {
+                            qualities["audio"][f"{int(f['abr'])}kbps"] = {
                                 "abr": int(f['abr']),
                                 "acodec": f['acodec'],
                                 "audio_channels": int(f.get('audio_channels', 0)),
@@ -174,7 +174,7 @@ def get_file(filename):
                             }
                         elif f.get('acodec') == 'none' and f.get('vcodec') != 'none' and f.get('height') and f.get('fps') and f.get('format_note') != 'storyboard':
                             video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
-                            qualities["video"][f"{f['height']}p{int(f['fps'])}"] = {
+                            qualities["video"][f"{int(f['height'])}p{int(f['fps'])}"] = {
                                 "height": int(f['height']),
                                 "width": int(f['width']),
                                 "fps": int(f['fps']),
