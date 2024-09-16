@@ -72,12 +72,14 @@ Initiates a video get_video task from the specified URL.
   ```json
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
-      "quality": "1080p"
+      "video_quality": "1080p",
+      "audio_quality": "192kbps"
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the video to be downloaded.
-  - `quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
+  - `video_quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
+  - `audio_quality` (optional): The quality of the audio (e.g., "128kbps", "192kbps", "256kbps", "best"). Default is "best".
 - **Permissions:** Requires the `get_video` permission.
 - **Response:**
   ```json
@@ -128,14 +130,16 @@ Initiates a video get_live_video task from the specified URL.
       "url": "https://youtu.be/1FPdtR_5KFo",
       "start": 0,
       "duration": 300,
-      "quality": "1080p"
+      "video_quality": "1080p",
+      "audio_quality": "192kbps"
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the live stream to be downloaded.
   - `start` (optional): The starting point in seconds for the stream recording.
   - `duration` (required): The length of the recording in seconds from the start point.
-  - `quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
+  - `video_quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
+  - `audio_quality` (optional): The quality of the audio (e.g., "128kbps", "192kbps", "256kbps", "best"). Default is "best".
 - **Permissions:** Requires the `get_live_video` permission.
 - **Response:**
   ```json
@@ -307,7 +311,8 @@ Retrieves the status of a specific task by its ID.
       "status": "completed",
       "task_type": "get_video",
       "url": "https://youtu.be/1FPdtR_5KFo"
-      "quality": "1080p",
+      "video_quality": "1080p",
+      "audio_quality": "192kbps"
       "file": "/files/abcdefgh12345678/video.mp4"
   }
   ```
@@ -318,24 +323,55 @@ Retrieves a file from the server.
 
 - **Method:** GET
 - **URL:** `/files/<path:filename>`
-- **Headers:**
-  - `X-API-Key`: Your API key
-- **Permissions:** No specific permission required, but the file must be associated with the API key used.
 - **Query Parameters:**
-  - `qualities`: Returns a list of available video qualities (only for `info.json` files)
+  - Any parameter matching keys in the `info.json` file
+  - `qualities`: Returns a structured list of available video and audio qualities
 - **Response:**
   - For regular files: The file content
   - For `info.json` files:
-    ```json
-    {
-        "title": "Video Title",
-        "duration": 180,
-        "upload_date": "20230101",
-        "uploader": "Channel Name",
-        "view_count": 1000000,
-        "qualities": ["360p", "720p", "1080p"]
-    }
-    ```
+    - If no query parameters: Full content of the `info.json` file
+    - If query parameters present: Filtered data based on the parameters
+    - For `qualities` parameter:
+      ```json
+      {
+        "qualities": {
+          "video": {
+            "360p30": {
+              "height": 360,
+              "width": 640,
+              "fps": 30,
+              "vcodec": "avc1.4d401e",
+              "format_note": "360p",
+              "dynamic_range": "SDR",
+              "filesize": 1000000
+            },
+            "720p60": {
+              "height": 720,
+              "width": 1280,
+              "fps": 60,
+              "vcodec": "avc1.4d401f",
+              "format_note": "720p",
+              "dynamic_range": "SDR",
+              "filesize": 2000000
+            }
+          },
+          "audio": {
+            "128kbps": {
+              "abr": 128,
+              "acodec": "mp4a.40.2",
+              "audio_channels": 2,
+              "filesize": 500000
+            },
+            "256kbps": {
+              "abr": 256,
+              "acodec": "mp4a.40.2",
+              "audio_channels": 2,
+              "filesize": 1000000
+            }
+          }
+        }
+      }
+      ```
 
 ## Error Handling
 
@@ -373,7 +409,8 @@ headers = {
 
 data = {
     "url": "https://youtu.be/1FPdtR_5KFo",
-    "quality": "720p"
+    "video_quality": "1080p",
+    "audio_quality": "192kbps"
 }
 
 response = requests.post(f"{base_url}/get_video", json=data, headers=headers)

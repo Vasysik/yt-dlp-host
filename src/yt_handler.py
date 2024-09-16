@@ -52,15 +52,11 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
 
         if type.lower() == 'audio':
             if audio_quality.lower() == 'best': format_option = 'bestaudio/best'
-            else: format_option = f'bestaudio[abr<={audio_quality}]/best'
-            ydl_opts = {
-                'format': format_option,
-                'outtmpl': os.path.join(download_path, f'audio.%(ext)s'),
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3'
-                }]
-            }
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
+            
+            format_option = f'{audio_format}/best'
+            postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
+            output_template = f'audio.%(ext)s'
         else:
             if video_quality.lower() == 'best': video_format = 'bestvideo'
             elif len(video_quality.split("p")) > 1:
@@ -72,16 +68,17 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
                 video_format = f'bestvideo[height<={height}]'
 
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<={audio_quality}]'
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
 
-            ydl_opts = {
-                'format': f'{video_format}+{audio_format}/best',
-                'outtmpl': os.path.join(download_path, f'video.%(ext)s'),
-                'postprocessors': [{
-                    'key': 'FFmpegExtractVideo',
-                    'preferredcodec': 'mp4'
-                }]
-            }
+            format_option = f'{video_format}+{audio_format}/best'
+            postprocessors = [{ 'key': 'FFmpegVideoConvertor', 'preferredcodec': 'mp4' }]
+            output_template = f'video.%(ext)s'
+
+        ydl_opts = {
+            'format': format_option,
+            'outtmpl': os.path.join(download_path, output_template),
+            'postprocessors': postprocessors
+        }
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -96,7 +93,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def get_live(task_id, url, type, start, duration, quality="best"):
+def get_live(task_id, url, type, start, duration, video_quality="best", audio_quality="best"):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -111,37 +108,34 @@ def get_live(task_id, url, type, start, duration, quality="best"):
         end_time = start_time + duration
 
         if type.lower() == 'audio':
-            format_option = 'bestaudio/best'
-            postprocessors = [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }]
+            if audio_quality.lower() == 'best': format_option = 'bestaudio/best'
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
+            
+            format_option = f'{audio_format}/best'
+            postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
             output_template = f'live_audio.%(ext)s'
         else:
-            if quality.lower() == 'best':
-                format_option = 'bestvideo+bestaudio/best'
-            elif len(quality.split("p")) > 1:
-                height, fps = quality.split("p")
-                format_option = f'bestvideo[height<={height}]'
-                if fps: format_option += f'[fps<={fps}]'
-                format_option += '+bestaudio/best'
+            if video_quality.lower() == 'best': video_format = 'bestvideo'
+            elif len(video_quality.split("p")) > 1:
+                height, fps = video_quality.split("p")
+                video_format = f'bestvideo[height<={height}]'
+                if fps: video_format += f'[fps<={fps}]'
             else:
-                height = quality.split("p")[0]
-                format_option = f'bestvideo[height<={height}]+bestaudio/best'
-            postprocessors = []
+                height = video_quality.split("p")[0]
+                video_format = f'bestvideo[height<={height}]'
+
+            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
+
+            format_option = f'{video_format}+{audio_format}/best'
+            postprocessors = [{ 'key': 'FFmpegVideoConvertor', 'preferredcodec': 'mp4' }]
             output_template = f'live_video.%(ext)s'
 
         ydl_opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
-            'download_ranges': lambda info, *args: [{
-                'start_time': start_time,
-                'end_time': end_time,
-            }],
-            'postprocessors': postprocessors,
-            'merge_output_format': 'mp4' if type.lower() == 'video' else None,
-            'force_generic_extractor': True
+            'download_ranges': lambda info, *args: [{'start_time': start_time, 'end_time': end_time,}],
+            'postprocessors': postprocessors
         }
         
         try:
