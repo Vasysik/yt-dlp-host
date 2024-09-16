@@ -19,7 +19,8 @@ def generate_random_id(length=16):
 def get_video():
     data = request.json
     url = data.get('url')
-    quality = data.get('quality', 'best')
+    video_quality = data.get('video_quality', 'best')
+    audio_quality = data.get('video_quality', 'best')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -31,7 +32,8 @@ def get_video():
         'status': 'waiting',
         'task_type': 'get_video',
         'url': url,
-        'quality': quality
+        'video_quality': video_quality,
+        'audio_quality': audio_quality
     }
     save_tasks(tasks)
 
@@ -42,6 +44,7 @@ def get_video():
 def get_audio():
     data = request.json
     url = data.get('url')
+    audio_quality = data.get('video_quality', 'best')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -52,7 +55,8 @@ def get_audio():
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
         'status': 'waiting',
         'task_type': 'get_audio',
-        'url': url
+        'url': url,
+        'audio_quality': audio_quality
     }
     save_tasks(tasks)
 
@@ -86,7 +90,8 @@ def get_live_video():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration')
-    quality = data.get('quality', 'best')
+    video_quality = data.get('video_quality', 'best')
+    audio_quality = data.get('video_quality', 'best')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -100,7 +105,8 @@ def get_live_video():
         'url': url,
         'start': start,
         'duration': duration,
-        'quality': quality
+        'video_quality': video_quality,
+        'audio_quality': audio_quality
     }
     save_tasks(tasks)
 
@@ -113,6 +119,7 @@ def get_live_audio():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration', 5)
+    audio_quality = data.get('video_quality', 'best')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -125,7 +132,8 @@ def get_live_audio():
         'task_type': 'get_live_audio',
         'url': url,
         'start': start,
-        'duration': duration
+        'duration': duration,
+        'audio_quality': audio_quality
     }
     save_tasks(tasks)
 
@@ -165,7 +173,7 @@ def get_file(filename):
                                 "filesize": audio_size
                             }
                     for f in data['formats']:
-                        if f.get('height') and f.get('fps') and int(f.get('height')) >= 144 and int(f.get('fps')) >= 15:
+                        if f.get('height') and f.get('fps'):
                             quality_key = f"{f['height']}p{int(f['fps'])}"
                             video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
                             qualities[quality_key] = {

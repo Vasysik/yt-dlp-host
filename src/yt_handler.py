@@ -40,7 +40,7 @@ def get_info(task_id, url):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def get(task_id, url, type, quality="best", audio_quality="best"):
+def get(task_id, url, type, video_quality="best", audio_quality="best"):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -62,13 +62,13 @@ def get(task_id, url, type, quality="best", audio_quality="best"):
                 }]
             }
         else:
-            if quality.lower() == 'best': video_format = 'bestvideo'
-            elif len(quality.split("p")) > 1:
-                height, fps = quality.split("p")
+            if video_quality.lower() == 'best': video_format = 'bestvideo'
+            elif len(video_quality.split("p")) > 1:
+                height, fps = video_quality.split("p")
                 video_format = f'bestvideo[height<={height}]'
                 if fps: video_format += f'[fps<={fps}]'
             else:
-                height = quality.split("p")[0]
+                height = video_quality.split("p")[0]
                 video_format = f'bestvideo[height<={height}]'
 
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
@@ -198,15 +198,15 @@ def process_tasks():
         for task_id, task in list(tasks.items()):
             if task['status'] == 'waiting':
                 if task['task_type'] == 'get_video':
-                    executor.submit(get, task_id, task['url'], 'video', task['quality'])
+                    executor.submit(get, task_id, task['url'], 'video', task['video_quality'], task['audio_quality'])
                 elif task['task_type'] == 'get_audio':
-                    executor.submit(get, task_id, task['url'], 'audio')
+                    executor.submit(get, task_id, task['url'], 'audio', task['audio_quality'])
                 elif task['task_type'] == 'get_info':
                     executor.submit(get_info, task_id, task['url'])
                 elif task['task_type'] == 'get_live_video':
-                    executor.submit(get_live, task_id, task['url'], 'video', task['start'], task['duration'], task['quality'])
+                    executor.submit(get_live, task_id, task['url'], 'video', task['start'], task['duration'], task['video_quality'], task['audio_quality'])
                 elif task['task_type'] == 'get_live_audio':
-                    executor.submit(get_live, task_id, task['url'], 'audio', task['start'], task['duration'])
+                    executor.submit(get_live, task_id, task['url'], 'audio', task['start'], task['duration'], task['audio_quality'])
             elif task['status'] in ['completed', 'error']:
                 completed_time = datetime.fromisoformat(task['completed_time'])
                 if current_time - completed_time > timedelta(minutes=TASK_CLEANUP_TIME):
