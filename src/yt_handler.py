@@ -55,7 +55,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
             
             format_option = f'{audio_format}/best'
-            postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
+            postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': audio_quality.split("kbps")[0] }]
             output_template = f'audio.%(ext)s'
         else:
             if video_quality.lower() == 'best': video_format = 'bestvideo'
@@ -113,7 +113,7 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
             else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
             
             format_option = f'{audio_format}/best'
-            postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
+            postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': audio_quality.split("kbps")[0] }]
             output_template = f'live_audio.%(ext)s'
         else:
             if video_quality.lower() == 'best': video_format = 'bestvideo'
