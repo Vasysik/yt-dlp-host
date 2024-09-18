@@ -41,6 +41,7 @@ def get_info(task_id, url):
         handle_task_error(task_id, e)
 
 def get(task_id, url, type, video_quality="best", audio_quality="best"):
+    print(video_quality, audio_quality)
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -51,7 +52,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             os.makedirs(download_path)
 
         if type.lower() == 'audio':
-            if audio_quality.lower() == 'best': audio_format = 'bestaudio/best'
+            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
             else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]'
             
             format_option = f'{audio_format}/best'
@@ -111,7 +112,7 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
         end_time = start_time + duration
 
         if type.lower() == 'audio':
-            if audio_quality.lower() == 'best': audio_format = 'bestaudio/best'
+            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
             else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]'
             
             format_option = f'{audio_format}/best'
