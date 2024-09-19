@@ -52,18 +52,15 @@ def get(task_id, url, type, video_format_id="bestvideo", audio_format_id="bestau
 
         if type.lower() == 'audio':
             format_option = f'{audio_format_id}/best'
-            postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
             output_template = f'audio.%(ext)s'
         else:
             format_option = f'{video_format_id}+{audio_format_id}/best'
-            postprocessors = []
             output_template = f'video.%(ext)s'
 
         ydl_opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
-            'merge_output_format': 'mp4' if type.lower() == 'video' else None,
-            'postprocessors': postprocessors
+            'merge_output_format': 'mp4' if type.lower() == 'video' else None
         }
         
         try:
@@ -95,19 +92,16 @@ def get_live(task_id, url, type, start, duration, video_format_id="bestvideo", a
 
         if type.lower() == 'audio':
             format_option = f'{audio_format_id}'
-            postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
             output_template = f'live_audio.%(ext)s'
         else:
             format_option = f'{video_format_id}+{audio_format_id}'
-            postprocessors = []
             output_template = f'live_video.%(ext)s'
 
         ydl_opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
             'download_ranges': lambda info, *args: [{'start_time': start_time, 'end_time': end_time,}],
-            'merge_output_format': 'mp4' if type.lower() == 'video' else None,
-            'postprocessors': postprocessors
+            'merge_output_format': 'mp4' if type.lower() == 'video' else None
         }
         
         try:
