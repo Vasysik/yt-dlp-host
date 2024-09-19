@@ -52,25 +52,25 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
 
         if type.lower() == 'audio':
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]'
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]/best'
             
-            format_option = audio_format
+            format_option = f'{audio_format}/best'
             postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
             output_template = f'audio.%(ext)s'
         else:
             if video_quality.lower() == 'best': video_format = 'bestvideo'
             elif len(video_quality.split("p")) > 1:
                 height, fps = video_quality.split("p")
-                video_format = f'bestvideo[height<=?{height}]'
-                if fps: video_format += f'[fps<=?{fps}]'
+                video_format = f'bestvideo[height<={height}]'
+                if fps: video_format += f'[fps<={fps}]'
             else:
                 height = video_quality.split("p")[0]
-                video_format = f'bestvideo[height<=?{height}]'
+                video_format = f'bestvideo[height<={height}]'
 
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]'
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
 
-            format_option = f'{video_format}+{audio_format}'
+            format_option = f'{video_format}+{audio_format}/best'
             postprocessors = []
             output_template = f'video.%(ext)s'
 
@@ -110,7 +110,7 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
 
         if type.lower() == 'audio':
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]'
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
             
             format_option = f'{audio_format}/best'
             postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
@@ -119,14 +119,14 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
             if video_quality.lower() == 'best': video_format = 'bestvideo'
             elif len(video_quality.split("p")) > 1:
                 height, fps = video_quality.split("p")
-                video_format = f'bestvideo[height<=?{height}]'
-                if fps: video_format += f'[fps<=?{fps}]'
+                video_format = f'bestvideo[height<={height}]'
+                if fps: video_format += f'[fps<={fps}]'
             else:
                 height = video_quality.split("p")[0]
-                video_format = f'bestvideo[height<=?{height}]'
+                video_format = f'bestvideo[height<={height}]'
 
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]'
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
 
             format_option = f'{video_format}+{audio_format}/best'
             postprocessors = []
