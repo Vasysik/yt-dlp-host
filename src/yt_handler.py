@@ -40,7 +40,7 @@ def get_info(task_id, url):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def get(task_id, url, type, video_quality="best", audio_quality="best"):
+def get(task_id, url, type, video_format_id="bestvideo", audio_format_id="bestaudio"):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -51,26 +51,11 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             os.makedirs(download_path)
 
         if type.lower() == 'audio':
-            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
-            
-            format_option = f'{audio_format}/best'
+            format_option = f'{audio_format_id}/best'
             postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
             output_template = f'audio.%(ext)s'
         else:
-            if video_quality.lower() == 'best': video_format = 'bestvideo'
-            elif len(video_quality.split("p")) > 1:
-                height, fps = video_quality.split("p")
-                video_format = f'bestvideo[height<={height}]'
-                if fps: video_format += f'[fps<={fps}]'
-            else:
-                height = video_quality.split("p")[0]
-                video_format = f'bestvideo[height<={height}]'
-
-            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
-
-            format_option = f'{video_format}+{audio_format}'
+            format_option = f'{video_format_id}+{audio_format_id}/best'
             postprocessors = []
             output_template = f'video.%(ext)s'
 
@@ -78,9 +63,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
             'merge_output_format': 'mp4' if type.lower() == 'video' else None,
-            'postprocessors': postprocessors,
-            'format_sort': ['abr', 'res', 'fps'],
-            'prefer_free_formats': True
+            'postprocessors': postprocessors
         }
         
         try:
@@ -96,7 +79,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def get_live(task_id, url, type, start, duration, video_quality="best", audio_quality="best"):
+def get_live(task_id, url, type, start, duration, video_format_id="bestvideo", audio_format_id="bestaudio"):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -111,26 +94,11 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
         end_time = start_time + duration
 
         if type.lower() == 'audio':
-            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
-            
-            format_option = f'{audio_format}'
+            format_option = f'{audio_format_id}'
             postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
             output_template = f'live_audio.%(ext)s'
         else:
-            if video_quality.lower() == 'best': video_format = 'bestvideo'
-            elif len(video_quality.split("p")) > 1:
-                height, fps = video_quality.split("p")
-                video_format = f'bestvideo[height<={height}]'
-                if fps: video_format += f'[fps<={fps}]'
-            else:
-                height = video_quality.split("p")[0]
-                video_format = f'bestvideo[height<={height}]'
-
-            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
-
-            format_option = f'{video_format}+{audio_format}'
+            format_option = f'{video_format_id}+{audio_format_id}'
             postprocessors = []
             output_template = f'live_video.%(ext)s'
 
@@ -139,9 +107,7 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
             'outtmpl': os.path.join(download_path, output_template),
             'download_ranges': lambda info, *args: [{'start_time': start_time, 'end_time': end_time,}],
             'merge_output_format': 'mp4' if type.lower() == 'video' else None,
-            'postprocessors': postprocessors,
-            'format_sort': ['abr', 'res', 'fps'],
-            'prefer_free_formats': True
+            'postprocessors': postprocessors
         }
         
         try:

@@ -166,7 +166,7 @@ def get_file(filename):
                     qualities = {"audio": {}, "video": {}}
                     for f in data['formats']:
                         if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('abr'):
-                            qualities["audio"][f"{int(f['abr'])}kbps"] = {
+                            qualities["audio"][f['format_id']] = {
                                 "abr": int(f['abr']),
                                 "acodec": f['acodec'],
                                 "audio_channels": int(f.get('audio_channels', 0)),
@@ -174,7 +174,7 @@ def get_file(filename):
                             }
                         elif f.get('acodec') == 'none' and f.get('vcodec') != 'none' and f.get('height') and f.get('fps') and f.get('format_note') != 'storyboard':
                             video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
-                            qualities["video"][f"{int(f['height'])}p{int(f['fps'])}"] = {
+                            qualities["video"][f['format_id']] = {
                                 "height": int(f['height']),
                                 "width": int(f['width']),
                                 "fps": int(f['fps']),
@@ -183,10 +183,9 @@ def get_file(filename):
                                 "dynamic_range": f.get('dynamic_range', 'unknown'),
                                 "filesize": video_size
                             }
-                    qualities["video"] = dict(sorted(qualities["video"].items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))
-                    qualities["audio"] = dict(sorted(qualities["audio"].items(), key=lambda x: int(x[0].split('kbps')[0])))
+                    qualities["video"] = dict(sorted(qualities["video"].items(), key=lambda x: (x[1]['height'], x[1]['fps'])))
+                    qualities["audio"] = dict(sorted(qualities["audio"].items(), key=lambda x: x[1]['abr']))
                     filtered_data[key] = qualities
-
             if filtered_data:
                 return jsonify(filtered_data)
             else:
