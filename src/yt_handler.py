@@ -51,8 +51,8 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             os.makedirs(download_path)
 
         if type.lower() == 'audio':
-            if audio_quality.lower() == 'best': audio_format = 'bestaudio/best'
-            else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]/best[abr<=?{audio_quality.split("kbps")[0]}]'
+            if audio_quality.lower() == 'best': audio_format = 'bestaudio'
+            else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]'
             
             format_option = audio_format
             postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
@@ -70,7 +70,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
             else: audio_format = f'bestaudio[abr<=?{audio_quality.split("kbps")[0]}]'
 
-            format_option = f'{video_format}+{audio_format}/best'
+            format_option = f'{video_format}+{audio_format}'
             postprocessors = []
             output_template = f'video.%(ext)s'
 
