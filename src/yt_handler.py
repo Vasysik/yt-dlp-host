@@ -52,7 +52,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
 
         if type.lower() == 'audio':
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
-            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]/best'
+            else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
             
             format_option = f'{audio_format}/best'
             postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
@@ -70,7 +70,7 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
             else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
 
-            format_option = f'{video_format}+{audio_format}/best'
+            format_option = f'{video_format}+{audio_format}'
             postprocessors = []
             output_template = f'video.%(ext)s'
 
@@ -78,7 +78,9 @@ def get(task_id, url, type, video_quality="best", audio_quality="best"):
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
             'merge_output_format': 'mp4' if type.lower() == 'video' else None,
-            'postprocessors': postprocessors
+            'postprocessors': postprocessors,
+            'format_sort': ['abr', 'res', 'fps'],
+            'prefer_free_formats': True
         }
         
         try:
@@ -112,7 +114,7 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
             else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
             
-            format_option = f'{audio_format}/best'
+            format_option = f'{audio_format}'
             postprocessors = [{ 'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3' }]
             output_template = f'live_audio.%(ext)s'
         else:
@@ -128,7 +130,7 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
             if audio_quality.lower() == 'best': audio_format = 'bestaudio'
             else: audio_format = f'bestaudio[abr<={audio_quality.split("kbps")[0]}]'
 
-            format_option = f'{video_format}+{audio_format}/best'
+            format_option = f'{video_format}+{audio_format}'
             postprocessors = []
             output_template = f'live_video.%(ext)s'
 
@@ -137,7 +139,9 @@ def get_live(task_id, url, type, start, duration, video_quality="best", audio_qu
             'outtmpl': os.path.join(download_path, output_template),
             'download_ranges': lambda info, *args: [{'start_time': start_time, 'end_time': end_time,}],
             'merge_output_format': 'mp4' if type.lower() == 'video' else None,
-            'postprocessors': postprocessors
+            'postprocessors': postprocessors,
+            'format_sort': ['abr', 'res', 'fps'],
+            'prefer_free_formats': True
         }
         
         try:
