@@ -19,8 +19,8 @@ def generate_random_id(length=16):
 def get_video():
     data = request.json
     url = data.get('url')
-    video_quality = data.get('video_quality', 'best')
-    audio_quality = data.get('audio_quality', 'best')
+    video_quality = data.get('video_quality', 'bestvideo')
+    audio_quality = data.get('audio_quality', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -44,7 +44,7 @@ def get_video():
 def get_audio():
     data = request.json
     url = data.get('url')
-    audio_quality = data.get('audio_quality', 'best')
+    audio_quality = data.get('audio_quality', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -90,8 +90,8 @@ def get_live_video():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration')
-    video_quality = data.get('video_quality', 'best')
-    audio_quality = data.get('audio_quality', 'best')
+    video_quality = data.get('video_quality', 'bestvideo')
+    audio_quality = data.get('audio_quality', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -119,7 +119,7 @@ def get_live_audio():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration', 5)
-    audio_quality = data.get('audio_quality', 'best')
+    audio_quality = data.get('audio_quality', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
