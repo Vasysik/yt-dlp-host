@@ -72,14 +72,14 @@ Initiates a video get_video task from the specified URL.
   ```json
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
-      "video_quality": "1080p",
-      "audio_quality": "192kbps"
+      "video_format": "bestvideo[height<=1080]",
+      "audio_format": "bestaudio[abr<=129]"
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the video to be downloaded.
-  - `video_quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
-  - `audio_quality` (optional): The quality of the audio (e.g., "128kbps", "192kbps", "256kbps", "best"). Default is "best".
+  - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
+  - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
 - **Permissions:** Requires the `get_video` permission.
 - **Response:**
   ```json
@@ -130,16 +130,16 @@ Initiates a video get_live_video task from the specified URL.
       "url": "https://youtu.be/1FPdtR_5KFo",
       "start": 0,
       "duration": 300,
-      "video_quality": "1080p",
-      "audio_quality": "192kbps"
+      "video_format": "bestvideo[height<=1080]",
+      "audio_format": "bestaudio[abr<=129]"
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the live stream to be downloaded.
   - `start` (optional): The starting point in seconds for the stream recording.
   - `duration` (required): The length of the recording in seconds from the start point.
-  - `video_quality` (optional): The quality of the video (e.g., "360p", "720p", "1080p", "best"). Default is "best".
-  - `audio_quality` (optional): The quality of the audio (e.g., "128kbps", "192kbps", "256kbps", "best"). Default is "best".
+  - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
+  - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
 - **Permissions:** Requires the `get_live_video` permission.
 - **Response:**
   ```json
@@ -310,9 +310,9 @@ Retrieves the status of a specific task by its ID.
   {
       "status": "completed",
       "task_type": "get_video",
-      "url": "https://youtu.be/1FPdtR_5KFo"
-      "video_quality": "1080p",
-      "audio_quality": "192kbps"
+      "url": "https://youtu.be/1FPdtR_5KFo",
+      "video_format": "bestvideo[height<=1080]",
+      "audio_format": "bestaudio[abr<=129]",
       "file": "/files/abcdefgh12345678/video.mp4"
   }
   ```
@@ -325,7 +325,7 @@ Retrieves a file from the server.
 - **URL:** `/files/<path:filename>`
 - **Query Parameters:**
   - Any parameter matching keys in the `info.json` file
-  - `qualities`: Returns a structured list of available video and audio qualities
+  - `qualities`: Returns a structured list of available video and audio qualities formats
 - **Response:**
   - For regular files: The file content
   - For `info.json` files:
@@ -335,38 +335,38 @@ Retrieves a file from the server.
       ```json
       {
         "qualities": {
-          "video": {
-            "360p30": {
-              "height": 360,
-              "width": 640,
-              "fps": 30,
-              "vcodec": "avc1.4d401e",
-              "format_note": "360p",
-              "dynamic_range": "SDR",
-              "filesize": 1000000
+          "audio": {
+            "249": {
+              "abr": 47,
+              "acodec": "opus",
+              "audio_channels": 2,
+              "filesize": 528993
             },
-            "720p60": {
-              "height": 720,
-              "width": 1280,
-              "fps": 60,
-              "vcodec": "avc1.4d401f",
-              "format_note": "720p",
-              "dynamic_range": "SDR",
-              "filesize": 2000000
+            "139": {
+              "abr": 48,
+              "acodec": "mp4a.40.5",
+              "audio_channels": 2,
+              "filesize": 549935
             }
           },
-          "audio": {
-            "128kbps": {
-              "abr": 128,
-              "acodec": "mp4a.40.2",
-              "audio_channels": 2,
-              "filesize": 500000
+          "video": {
+            "394": {
+              "height": 144,
+              "width": 256,
+              "fps": 25,
+              "vcodec": "av01.0.00M.08",
+              "format_note": "144p",
+              "dynamic_range": "SDR",
+              "filesize": 1009634
             },
-            "256kbps": {
-              "abr": 256,
-              "acodec": "mp4a.40.2",
-              "audio_channels": 2,
-              "filesize": 1000000
+            "134": {
+              "height": 360,
+              "width": 640,
+              "fps": 25,
+              "vcodec": "avc1.4D401E",
+              "format_note": "360p",
+              "dynamic_range": "SDR",
+              "filesize": 6648273
             }
           }
         }
@@ -409,8 +409,8 @@ headers = {
 
 data = {
     "url": "https://youtu.be/1FPdtR_5KFo",
-    "video_quality": "1080p",
-    "audio_quality": "192kbps"
+    "video_format": "bestvideo[height<=1080]",
+    "audio_format": "bestaudio[abr<=129]"
 }
 
 response = requests.post(f"{base_url}/get_video", json=data, headers=headers)

@@ -19,8 +19,8 @@ def generate_random_id(length=16):
 def get_video():
     data = request.json
     url = data.get('url')
-    video_quality = data.get('video_quality', 'bestvideo')
-    audio_quality = data.get('audio_quality', 'bestaudio')
+    video_format = data.get('video_format', 'bestvideo')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -32,8 +32,8 @@ def get_video():
         'status': 'waiting',
         'task_type': 'get_video',
         'url': url,
-        'video_quality': video_quality,
-        'audio_quality': audio_quality
+        'video_format': video_format,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -44,7 +44,7 @@ def get_video():
 def get_audio():
     data = request.json
     url = data.get('url')
-    audio_quality = data.get('audio_quality', 'bestaudio')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -56,7 +56,7 @@ def get_audio():
         'status': 'waiting',
         'task_type': 'get_audio',
         'url': url,
-        'audio_quality': audio_quality
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -90,8 +90,8 @@ def get_live_video():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration')
-    video_quality = data.get('video_quality', 'bestvideo')
-    audio_quality = data.get('audio_quality', 'bestaudio')
+    video_format = data.get('video_format', 'bestvideo')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -105,8 +105,8 @@ def get_live_video():
         'url': url,
         'start': start,
         'duration': duration,
-        'video_quality': video_quality,
-        'audio_quality': audio_quality
+        'video_format': video_format,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -119,7 +119,7 @@ def get_live_audio():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration', 5)
-    audio_quality = data.get('audio_quality', 'bestaudio')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -133,7 +133,7 @@ def get_live_audio():
         'url': url,
         'start': start,
         'duration': duration,
-        'audio_quality': audio_quality
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -165,6 +165,7 @@ def get_file(filename):
                 elif key == 'qualities':
                     qualities = {"audio": {}, "video": {}}
                     for f in data['formats']:
+                        if f.get('format_note') in ['unknown', 'storyboard']: continue
                         if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('abr'):
                             qualities["audio"][f['format_id']] = {
                                 "abr": int(f['abr']),
@@ -172,7 +173,7 @@ def get_file(filename):
                                 "audio_channels": int(f.get('audio_channels', 0)),
                                 "filesize": int(f.get('filesize') or f.get('filesize_approx') or 0)
                             }
-                        elif f.get('acodec') == 'none' and f.get('vcodec') != 'none' and f.get('height') and f.get('fps') and f.get('format_note') != 'storyboard':
+                        elif f.get('acodec') == 'none' and f.get('vcodec') != 'none' and f.get('height') and f.get('fps') :
                             video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
                             qualities["video"][f['format_id']] = {
                                 "height": int(f['height']),
