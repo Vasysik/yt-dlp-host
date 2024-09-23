@@ -40,7 +40,7 @@ def get_info(task_id, url):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def get(task_id, url, type, quality="best"):
+def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -51,31 +51,17 @@ def get(task_id, url, type, quality="best"):
             os.makedirs(download_path)
 
         if type.lower() == 'audio':
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'outtmpl': os.path.join(download_path, f'audio.%(ext)s'),
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }]
-            }
+            format_option = f'{audio_format}/best'
+            output_template = f'audio.%(ext)s'
         else:
-            if quality.lower() == 'best': format_option = 'bestvideo+bestaudio/best'
-            elif len(quality.split("p")) > 1:
-                height, fps = quality.split("p")
-                format_option = f'bestvideo[height<={height}]'
-                if fps: format_option += f'[fps<={fps}]'
-                format_option += '+bestaudio/best'
-            else:
-                height = quality.split("p")[0]
-                format_option = f'bestvideo[height<={height}]+bestaudio/best'
-            
-            ydl_opts = {
-                'format': format_option,
-                'outtmpl': os.path.join(download_path, f'video.%(ext)s'),
-                'merge_output_format': 'mp4'
-            }
+            format_option = f'{video_format}+{audio_format}/best'
+            output_template = f'video.%(ext)s'
+
+        ydl_opts = {
+            'format': format_option,
+            'outtmpl': os.path.join(download_path, output_template),
+            'merge_output_format': 'mp4' if type.lower() == 'video' else None
+        }
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -90,7 +76,7 @@ def get(task_id, url, type, quality="best"):
     except Exception as e:
         handle_task_error(task_id, e)
 
-def get_live(task_id, url, type, start, duration, quality="best"):
+def get_live(task_id, url, type, start, duration, video_format="bestvideo", audio_format="bestaudio"):
     try:
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
@@ -105,37 +91,17 @@ def get_live(task_id, url, type, start, duration, quality="best"):
         end_time = start_time + duration
 
         if type.lower() == 'audio':
-            format_option = 'bestaudio/best'
-            postprocessors = [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }]
+            format_option = f'{audio_format}'
             output_template = f'live_audio.%(ext)s'
         else:
-            if quality.lower() == 'best':
-                format_option = 'bestvideo+bestaudio/best'
-            elif len(quality.split("p")) > 1:
-                height, fps = quality.split("p")
-                format_option = f'bestvideo[height<={height}]'
-                if fps: format_option += f'[fps<={fps}]'
-                format_option += '+bestaudio/best'
-            else:
-                height = quality.split("p")[0]
-                format_option = f'bestvideo[height<={height}]+bestaudio/best'
-            postprocessors = []
+            format_option = f'{video_format}+{audio_format}'
             output_template = f'live_video.%(ext)s'
 
         ydl_opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
-            'download_ranges': lambda info, *args: [{
-                'start_time': start_time,
-                'end_time': end_time,
-            }],
-            'postprocessors': postprocessors,
-            'merge_output_format': 'mp4' if type.lower() == 'video' else None,
-            'force_generic_extractor': True
+            'download_ranges': lambda info, *args: [{'start_time': start_time, 'end_time': end_time,}],
+            'merge_output_format': 'mp4' if type.lower() == 'video' else None
         }
         
         try:
@@ -192,15 +158,15 @@ def process_tasks():
         for task_id, task in list(tasks.items()):
             if task['status'] == 'waiting':
                 if task['task_type'] == 'get_video':
-                    executor.submit(get, task_id, task['url'], 'video', task['quality'])
+                    executor.submit(get, task_id, task['url'], 'video', task['video_format'], task['audio_format'])
                 elif task['task_type'] == 'get_audio':
-                    executor.submit(get, task_id, task['url'], 'audio')
+                    executor.submit(get, task_id, task['url'], 'audio', 'bestvideo', task['audio_format'])
                 elif task['task_type'] == 'get_info':
                     executor.submit(get_info, task_id, task['url'])
                 elif task['task_type'] == 'get_live_video':
-                    executor.submit(get_live, task_id, task['url'], 'video', task['start'], task['duration'], task['quality'])
+                    executor.submit(get_live, task_id, task['url'], 'video', task['start'], task['duration'], task['video_format'], task['audio_format'])
                 elif task['task_type'] == 'get_live_audio':
-                    executor.submit(get_live, task_id, task['url'], 'audio', task['start'], task['duration'])
+                    executor.submit(get_live, task_id, task['url'], 'audio', task['start'], task['duration'], 'bestvideo', task['audio_format'])
             elif task['status'] in ['completed', 'error']:
                 completed_time = datetime.fromisoformat(task['completed_time'])
                 if current_time - completed_time > timedelta(minutes=TASK_CLEANUP_TIME):

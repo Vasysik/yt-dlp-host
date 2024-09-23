@@ -19,7 +19,8 @@ def generate_random_id(length=16):
 def get_video():
     data = request.json
     url = data.get('url')
-    quality = data.get('quality', 'best')
+    video_format = data.get('video_format', 'bestvideo')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -31,7 +32,8 @@ def get_video():
         'status': 'waiting',
         'task_type': 'get_video',
         'url': url,
-        'quality': quality
+        'video_format': video_format,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -42,6 +44,7 @@ def get_video():
 def get_audio():
     data = request.json
     url = data.get('url')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -52,7 +55,8 @@ def get_audio():
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
         'status': 'waiting',
         'task_type': 'get_audio',
-        'url': url
+        'url': url,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -86,7 +90,8 @@ def get_live_video():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration')
-    quality = data.get('quality', 'best')
+    video_format = data.get('video_format', 'bestvideo')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -100,7 +105,8 @@ def get_live_video():
         'url': url,
         'start': start,
         'duration': duration,
-        'quality': quality
+        'video_format': video_format,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -113,6 +119,7 @@ def get_live_audio():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration', 5)
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -125,7 +132,8 @@ def get_live_audio():
         'task_type': 'get_live_audio',
         'url': url,
         'start': start,
-        'duration': duration
+        'duration': duration,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -155,25 +163,30 @@ def get_file(filename):
                 if key in data:
                     filtered_data[key] = data[key]
                 elif key == 'qualities':
-                    qualities = {}
-                    best_audio_size = 0
+                    qualities = {"audio": {}, "video": {}}
                     for f in data['formats']:
-                        if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
-                            audio_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
-                            if audio_size > best_audio_size:
-                                best_audio_size = audio_size
-                    for f in data['formats']:
-                        if f.get('height') and f.get('fps') and int(f.get('height')) >= 128 and int(f.get('fps')) >= 10:
-                            quality_key = f"{f['height']}p{int(f['fps'])}"
+                        if f.get('format_note') in ['unknown', 'storyboard']: continue
+                        if f.get('acodec') != 'none' and f.get('vcodec') == 'none' and f.get('abr'):
+                            qualities["audio"][f['format_id']] = {
+                                "abr": int(f['abr']),
+                                "acodec": f['acodec'],
+                                "audio_channels": int(f.get('audio_channels', 0)),
+                                "filesize": int(f.get('filesize') or f.get('filesize_approx') or 0)
+                            }
+                        elif f.get('acodec') == 'none' and f.get('vcodec') != 'none' and f.get('height') and f.get('fps') :
                             video_size = int(f.get('filesize') or f.get('filesize_approx') or 0)
-                            qualities[quality_key] = {
+                            qualities["video"][f['format_id']] = {
                                 "height": int(f['height']),
                                 "width": int(f['width']),
                                 "fps": int(f['fps']),
-                                "filesize": video_size + best_audio_size
+                                "vcodec": f['vcodec'],
+                                "format_note": f.get('format_note', 'unknown'),
+                                "dynamic_range": f.get('dynamic_range', 'unknown'),
+                                "filesize": video_size
                             }
-                    filtered_data[key] = dict(sorted(qualities.items(), key=lambda x: (int(x[0].split('p')[0]), int(x[0].split('p')[1]))))
-
+                    qualities["video"] = dict(sorted(qualities["video"].items(), key=lambda x: (x[1]['height'], x[1]['fps'])))
+                    qualities["audio"] = dict(sorted(qualities["audio"].items(), key=lambda x: x[1]['abr']))
+                    filtered_data[key] = qualities
             if filtered_data:
                 return jsonify(filtered_data)
             else:
