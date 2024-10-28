@@ -2,10 +2,40 @@ from functools import wraps
 from flask import request, jsonify
 from src.json_utils import load_keys, save_keys, load_tasks
 from config import REQUEST_LIMIT, TASK_CLEANUP_TIME
+from datetime import datetime, timedelta
 import secrets
 
 def generate_key():
     return secrets.token_urlsafe(32)
+
+def check_memory_limit(api_key, new_size=0):
+    keys = load_keys()
+    key_name = get_key_name(api_key)
+    if not key_name:
+        return False
+
+    current_time = datetime.now()
+    key_info = keys[key_name]
+    
+    if 'memory_usage' not in key_info:
+        key_info['memory_usage'] = []
+    key_info['memory_usage'] = [
+        usage for usage in key_info['memory_usage']
+        if datetime.fromisoformat(usage['timestamp']) > current_time - timedelta(minutes=10)
+    ]
+    
+    total_usage = sum(usage['size'] for usage in key_info['memory_usage'])
+    memory_limit = 5 * 1024 * 1024 * 1024  # 5GB in bytes
+    
+    if total_usage + new_size > memory_limit:
+        return False
+    if new_size > 0:
+        key_info['memory_usage'].append({
+            'timestamp': current_time.isoformat(),
+            'size': new_size
+        })
+        save_keys(keys)
+    return True
 
 def check_rate_limit(api_key):
     tasks = load_tasks()

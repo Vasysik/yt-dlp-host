@@ -2,12 +2,61 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
 from src.json_utils import load_tasks, save_tasks
+from src.auth import check_memory_limit
 import yt_dlp, os, threading, json, time, shutil
 
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
 if not os.path.exists(DOWNLOAD_DIR):
     os.makedirs(DOWNLOAD_DIR)
+
+def get_format_size(info, format_id):
+    for f in info.get('formats', []):
+        if f.get('format_id') == format_id:
+            return f.get('filesize') or f.get('filesize_approx', 0)
+    return 0
+
+def check_and_get_size(url, video_format=None, audio_format=None):
+    try:
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': False,
+            'skip_download': True
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            
+            total_size = 0
+            if video_format:
+                if video_format == 'bestvideo':
+                    best_video = max(
+                        (f for f in info['formats'] if f.get('vcodec') != 'none' and f.get('acodec') == 'none'),
+                        key=lambda f: f.get('height', 0),
+                        default=None
+                    )
+                    if best_video:
+                        total_size += best_video.get('filesize') or best_video.get('filesize_approx', 0)
+                else:
+                    total_size += get_format_size(info, video_format)
+
+            if audio_format:
+                if audio_format == 'bestaudio':
+                    best_audio = max(
+                        (f for f in info['formats'] if f.get('acodec') != 'none' and f.get('vcodec') == 'none'),
+                        key=lambda f: f.get('abr', 0),
+                        default=None
+                    )
+                    if best_audio:
+                        total_size += best_audio.get('filesize') or best_audio.get('filesize_approx', 0)
+                else:
+                    total_size += get_format_size(info, audio_format)
+
+            return total_size
+    except Exception as e:
+        print(f"Error getting size: {str(e)}")
+        return 0
 
 def get_info(task_id, url):
     try:
@@ -45,6 +94,12 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         tasks = load_tasks()
         tasks[task_id].update(status='processing')
         save_tasks(tasks)
+
+        total_size = check_and_get_size(url, video_format if type.lower() == 'video' else None, audio_format)
+
+        api_key = tasks[task_id].get('api_key')
+        if not check_memory_limit(api_key, total_size):
+            raise Exception("Memory limit exceeded. Maximum 5GB per 10 minutes.")
         
         download_path = os.path.join(DOWNLOAD_DIR, task_id)
         if not os.path.exists(download_path):
