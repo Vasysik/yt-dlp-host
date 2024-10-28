@@ -13,27 +13,20 @@ def check_memory_limit(api_key, new_size=0):
     key_name = get_key_name(api_key)
     if not key_name:
         return False
-
     current_time = datetime.now()
     key_info = keys[key_name]
     
-    if 'memory_usage' not in key_info:
-        key_info['memory_usage'] = []
-    key_info['memory_usage'] = [
-        usage for usage in key_info['memory_usage']
-        if datetime.fromisoformat(usage['timestamp']) > current_time - timedelta(minutes=10)
-    ]
-    
-    total_usage = sum(usage['size'] for usage in key_info['memory_usage'])
-    memory_limit = 5 * 1024 * 1024 * 1024  # 5GB in bytes
-    
-    if total_usage + new_size > memory_limit:
+    if 'memory_quota' not in key_info:
+        key_info['memory_quota'] = 5 * 1024 * 1024 * 1024  # 5GB
+    if 'current_memory_usage' not in key_info:
+        key_info['current_memory_usage'] = 0
+    if 'last_access' not in key_info:
+        key_info['last_access'] = current_time.isoformat()
+    if key_info['current_memory_usage'] + new_size > key_info['memory_quota']:
         return False
     if new_size > 0:
-        key_info['memory_usage'].append({
-            'timestamp': current_time.isoformat(),
-            'size': new_size
-        })
+        key_info['current_memory_usage'] += new_size
+        key_info['last_access'] = current_time.isoformat()
         save_keys(keys)
     return True
 
@@ -54,14 +47,18 @@ def check_api_key(required_permission):
             api_key = request.headers.get('X-API-Key')
             if not api_key:
                 return jsonify({'error': 'No API key provided'}), 401
+            keys = load_keys()
+            key_name = get_key_name(api_key)
+            if not key_name:
+                return jsonify({'error': 'Invalid API key'}), 401
+            key_info = keys[key_name]
             if not check_rate_limit(api_key):
                 return jsonify({'error': f'Rate limit exceeded. Maximum {REQUEST_LIMIT} requests per {TASK_CLEANUP_TIME} minutes.'}), 429
-            key_info = get_key_info(api_key)
-            if not key_info:
-                return jsonify({'error': 'Invalid API key'}), 401
             permissions = key_info['permissions']
             if required_permission not in permissions:
                 return jsonify({'error': 'Insufficient permissions'}), 403
+            key_info['last_access'] = datetime.now().isoformat()
+            save_keys(keys)
             return f(*args, **kwargs)
         return decorated_function
     return decorator
