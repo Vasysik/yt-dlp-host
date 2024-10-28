@@ -16,7 +16,7 @@ def get_format_size(info, format_id):
             return f.get('filesize') or f.get('filesize_approx', 0)
     return 0
 
-def check_and_get_size(task_id, url, video_format=None, audio_format=None):
+def check_and_get_size(url, video_format=None, audio_format=None):
     try:
         ydl_opts = {
             'quiet': True,
@@ -55,7 +55,7 @@ def check_and_get_size(task_id, url, video_format=None, audio_format=None):
 
             return total_size
     except Exception as e:
-        handle_task_error(task_id, e)
+        return -1
 
 def get_info(task_id, url):
     try:
@@ -94,7 +94,8 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         tasks[task_id].update(status='processing')
         save_tasks(tasks)
 
-        total_size = check_and_get_size(task_id, url, video_format if type.lower() == 'video' else None, audio_format)
+        total_size = check_and_get_size(url, video_format if type.lower() == 'video' else None, audio_format)
+        if total_size <= 0: handle_task_error(task_id, f"Error getting size: {total_size}")
 
         api_key = tasks[task_id].get('api_key')
         if not check_memory_limit(api_key, total_size):
