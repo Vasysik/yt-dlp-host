@@ -19,6 +19,9 @@ def check_memory_limit(api_key, new_size=0):
         key_info['current_memory_usage'] = 0
     if 'last_access' not in key_info:
         key_info['last_access'] = current_time.isoformat()
+    last_access = datetime.fromisoformat(key_info['last_access'])
+    if (current_time - last_access) > timedelta(minutes=10):
+        key_info['current_memory_usage'] = 0
     if key_info['current_memory_usage'] + new_size > key_info['memory_quota']:
         return False
     if new_size > 0:

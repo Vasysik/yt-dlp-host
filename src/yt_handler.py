@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
 from src.json_utils import load_tasks, save_tasks
 from src.auth import check_memory_limit
+from src.auth import get_all_keys
 import yt_dlp, os, threading, json, time, shutil
 
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
@@ -97,7 +98,13 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         total_size = check_and_get_size(url, video_format if type.lower() == 'video' else None, audio_format)
         if total_size <= 0: handle_task_error(task_id, f"Error getting size: {total_size}")
 
-        api_key = tasks[task_id].get('api_key')
+        key_name = tasks[task_id].get('key_name')
+        keys = get_all_keys()
+        if key_name not in keys:
+            handle_task_error(task_id, "Invalid API key")
+            return
+        api_key = keys[key_name]['key']
+
         if not check_memory_limit(api_key, total_size):
             raise Exception("Memory limit exceeded. Maximum 5GB per 10 minutes.")
         
