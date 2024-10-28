@@ -10,11 +10,8 @@ def generate_key():
 
 def check_memory_limit(api_key, new_size=0):
     keys = load_keys()
-    key_name = get_key_name(api_key)
-    if not key_name:
-        return False
     current_time = datetime.now()
-    key_info = keys[key_name]
+    key_info = keys[get_key_name(api_key)]
     
     if 'memory_quota' not in key_info:
         key_info['memory_quota'] = 5 * 1024 * 1024 * 1024  # 5GB
