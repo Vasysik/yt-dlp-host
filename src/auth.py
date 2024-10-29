@@ -8,7 +8,7 @@ import secrets
 def generate_key():
     return secrets.token_urlsafe(32)
 
-def check_memory_limit(api_key, new_size=0):
+def check_memory_limit(api_key, task_id=None, new_size=0):
     keys = load_keys()
     current_time = datetime.now()
     key_name = get_key_name(api_key)
@@ -32,12 +32,13 @@ def check_memory_limit(api_key, new_size=0):
         return False
     
     if new_size > 0:
+        key_info['current_usage'] = current_usage + new_size
         key_info['memory_usage'].append({
             'size': new_size,
             'timestamp': current_time.isoformat(),
-            'task_ids': []
+            'task_id': task_id
         })
-        
+
     keys[key_name] = key_info
     save_keys(keys)
     return True
