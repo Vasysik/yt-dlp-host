@@ -11,7 +11,11 @@ def generate_key():
 def check_memory_limit(api_key, new_size=0):
     keys = load_keys()
     current_time = datetime.now()
-    key_info = keys[get_key_name(api_key)]
+    key_name = get_key_name(api_key)
+    if not key_name or key_name not in keys:
+        return False
+        
+    key_info = keys[key_name]
     if 'memory_quota' not in key_info:
         key_info['memory_quota'] = 5 * 1024 * 1024 * 1024  # 5GB
     if 'memory_usage' not in key_info:
@@ -19,8 +23,9 @@ def check_memory_limit(api_key, new_size=0):
     
     key_info['memory_usage'] = [
         usage for usage in key_info['memory_usage']
-        if (current_time - datetime.fromisoformat(usage['timestamp'])).total_seconds() < 600
+        if datetime.fromisoformat(usage['timestamp']) > current_time - timedelta(minutes=10)
     ]
+    
     current_usage = sum(usage['size'] for usage in key_info['memory_usage'])
 
     if current_usage + new_size > key_info['memory_quota']:
@@ -28,10 +33,13 @@ def check_memory_limit(api_key, new_size=0):
     
     if new_size > 0:
         key_info['memory_usage'].append({
+            'size': new_size,
             'timestamp': current_time.isoformat(),
-            'size': new_size
+            'task_ids': []
         })
-        save_keys(keys)
+        
+    keys[key_name] = key_info
+    save_keys(keys)
     return True
 
 def check_rate_limit(api_key):
