@@ -37,8 +37,9 @@ def check_memory_limit(api_key, new_size=0, task_id=None):
             'size': new_size,
             'timestamp': current_time.isoformat(),
             'task_id': task_id
-        })
-
+        }),
+        key_info['last_access'] = current_time.isoformat()
+    
     keys[key_name] = key_info
     save_keys(keys)
     return True
@@ -83,12 +84,17 @@ def get_key_name(api_key):
             return key_name
     return None
 
-def create_api_key(name, permissions):
+def create_api_key(name, permissions, memory_quota=5368709120):
     keys = load_keys()
     new_key = generate_key()
     keys[name] = {
         'key': new_key,
-        'permissions': permissions
+        'permissions': permissions,
+        'memory_quota': memory_quota,
+        'current_usage': 0,
+        'task_ids': [],
+        'memory_usage': [],
+        'last_access': datetime.now().isoformat()
     }
     save_keys(keys)
     return new_key
@@ -100,9 +106,6 @@ def delete_api_key(name):
         save_keys(keys)
         return True
     return False
-
-def get_all_keys():
-    return load_keys()
 
 def get_key_info(api_key):
     keys = load_keys()

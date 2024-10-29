@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
-from src.json_utils import load_tasks, save_tasks
+from src.json_utils import load_tasks, save_tasks, load_keys
 from config import DOWNLOAD_DIR
 import src.yt_handler as yt_handler
 import src.auth as auth
@@ -26,6 +26,14 @@ def get_video():
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
     
     task_id = generate_random_id()
+    keys = load_keys()
+    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_info = keys[key_name]
+
+    if 'task_ids' not in key_info:
+        key_info['task_ids'] = []
+    key_info['task_ids'].append(task_id)
+
     tasks = load_tasks()
     tasks[task_id] = {
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
@@ -50,6 +58,14 @@ def get_audio():
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
     
     task_id = generate_random_id()
+    keys = load_keys()
+    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_info = keys[key_name]
+
+    if 'task_ids' not in key_info:
+        key_info['task_ids'] = []
+    key_info['task_ids'].append(task_id)
+
     tasks = load_tasks()
     tasks[task_id] = {
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
@@ -72,6 +88,14 @@ def get_info():
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
     
     task_id = generate_random_id()
+    keys = load_keys()
+    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_info = keys[key_name]
+
+    if 'task_ids' not in key_info:
+        key_info['task_ids'] = []
+    key_info['task_ids'].append(task_id)
+    
     tasks = load_tasks()
     tasks[task_id] = {
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
@@ -97,6 +121,14 @@ def get_live_video():
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
     
     task_id = generate_random_id()
+    keys = load_keys()
+    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_info = keys[key_name]
+
+    if 'task_ids' not in key_info:
+        key_info['task_ids'] = []
+    key_info['task_ids'].append(task_id)
+
     tasks = load_tasks()
     tasks[task_id] = {
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
@@ -125,6 +157,14 @@ def get_live_audio():
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
     
     task_id = generate_random_id()
+    keys = load_keys()
+    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_info = keys[key_name]
+
+    if 'task_ids' not in key_info:
+        key_info['task_ids'] = []
+    key_info['task_ids'].append(task_id)
+    
     tasks = load_tasks()
     tasks[task_id] = {
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
@@ -218,7 +258,7 @@ def delete_key(name):
 @app.route('/get_key/<name>', methods=['GET'])
 @auth.check_api_key('get_key')
 def get_key(name):
-    keys = auth.get_all_keys()
+    keys = load_keys()
     if name in keys:
         return jsonify({'message': 'API key get successfully', 'name': name, 'key': keys[name]['key']}), 200
     return jsonify({'error': 'The key name does not exist'}), 403
@@ -226,7 +266,7 @@ def get_key(name):
 @app.route('/get_keys', methods=['GET'])
 @auth.check_api_key('get_keys')
 def get_keys():
-    keys = auth.get_all_keys()
+    keys = load_keys()
     return jsonify(keys), 200
 
 @app.route('/check_permissions', methods=['POST'])

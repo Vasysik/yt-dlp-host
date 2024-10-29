@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
-from src.json_utils import load_tasks, save_tasks
+from src.json_utils import load_tasks, save_tasks, load_keys
 from src.auth import check_memory_limit
-from src.auth import get_all_keys
 import yt_dlp, os, threading, json, time, shutil
 
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
@@ -129,7 +128,7 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         if total_size <= 0: handle_task_error(task_id, f"Error getting size: {total_size}")
 
         key_name = tasks[task_id].get('key_name')
-        keys = get_all_keys()
+        keys = load_keys()
         if key_name not in keys:
             handle_task_error(task_id, "Invalid API key")
             return
