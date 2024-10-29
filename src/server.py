@@ -65,6 +65,8 @@ def get_audio():
     if 'task_ids' not in key_info:
         key_info['task_ids'] = []
     key_info['task_ids'].append(task_id)
+    keys[key_name] = key_info
+    auth.save_keys(keys)
 
     tasks = load_tasks()
     tasks[task_id] = {
@@ -95,6 +97,8 @@ def get_info():
     if 'task_ids' not in key_info:
         key_info['task_ids'] = []
     key_info['task_ids'].append(task_id)
+    keys[key_name] = key_info
+    auth.save_keys(keys)
     
     tasks = load_tasks()
     tasks[task_id] = {
@@ -124,6 +128,8 @@ def get_live_video():
     keys = load_keys()
     key_name = auth.get_key_name(request.headers.get('X-API-Key'))
     key_info = keys[key_name]
+    keys[key_name] = key_info
+    auth.save_keys(keys)
 
     if 'task_ids' not in key_info:
         key_info['task_ids'] = []
@@ -164,6 +170,8 @@ def get_live_audio():
     if 'task_ids' not in key_info:
         key_info['task_ids'] = []
     key_info['task_ids'].append(task_id)
+    keys[key_name] = key_info
+    auth.save_keys(keys)
     
     tasks = load_tasks()
     tasks[task_id] = {
