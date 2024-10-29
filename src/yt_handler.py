@@ -29,20 +29,15 @@ def check_and_get_size(url, video_format=None, audio_format=None):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             formats = info['formats']
-            duration = info.get('duration', 0)
             total_size = 0
             
-            def estimate_size(format_info, duration):
+            def estimate_size(format_info):
                 if format_info is None:
                     return 0
                 
                 size = format_info.get('filesize') or format_info.get('filesize_approx')
                 if size:
                     return size
-                
-                tbr = format_info.get('tbr') or format_info.get('abr') or format_info.get('vbr')
-                if tbr and duration:
-                    return int((tbr * 1024 / 8) * duration)
                 return 0
             
             if video_format:
@@ -50,26 +45,22 @@ def check_and_get_size(url, video_format=None, audio_format=None):
                     video_formats = [f for f in formats if f.get('vcodec') != 'none' and f.get('acodec') == 'none']
                     if video_formats:
                         best_video = max(video_formats, key=lambda f: (f.get('height', 0), f.get('tbr', 0)))
-                        total_size += estimate_size(best_video, duration)
+                        total_size += estimate_size(best_video)
                 else:
                     format_info = next((f for f in formats if f.get('format_id') == video_format), None)
-                    total_size += estimate_size(format_info, duration)
+                    total_size += estimate_size(format_info)
 
             if audio_format:
                 if audio_format == 'bestaudio':
                     audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') == 'none']
                     if audio_formats:
                         best_audio = max(audio_formats, key=lambda f: (f.get('abr', 0) or f.get('tbr', 0)))
-                        total_size += estimate_size(best_audio, duration)
+                        total_size += estimate_size(best_audio)
                 else:
                     format_info = next((f for f in formats if f.get('format_id') == audio_format), None)
-                    total_size += estimate_size(format_info, duration)
+                    total_size += estimate_size(format_info)
 
-            total_size = int(total_size * 1.10)
-            
-            min_size = max(1024 * 1024, int(duration * 1024 * 1024 / 60))
-            total_size = max(total_size, min_size)
-            
+            total_size = int(total_size * 1.10)            
             return total_size if total_size > 0 else -1 
     except Exception as e:
         print(f"Error in check_and_get_size: {str(e)}")
