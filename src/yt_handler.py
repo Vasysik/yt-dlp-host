@@ -49,8 +49,7 @@ def check_and_get_size(url, video_format=None, audio_format=None):
                 if video_format == 'bestvideo':
                     video_formats = [f for f in formats if f.get('vcodec') != 'none' and f.get('acodec') == 'none']
                     if video_formats:
-                        best_video = max(video_formats, 
-                                       key=lambda f: (f.get('height', 0), f.get('tbr', 0)))
+                        best_video = max(video_formats, key=lambda f: (f.get('height', 0), f.get('tbr', 0)))
                         total_size += estimate_size(best_video, duration)
                 else:
                     format_info = next((f for f in formats if f.get('format_id') == video_format), None)
@@ -60,8 +59,7 @@ def check_and_get_size(url, video_format=None, audio_format=None):
                 if audio_format == 'bestaudio':
                     audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') == 'none']
                     if audio_formats:
-                        best_audio = max(audio_formats, 
-                                       key=lambda f: (f.get('abr', 0) or f.get('tbr', 0)))
+                        best_audio = max(audio_formats, key=lambda f: (f.get('abr', 0) or f.get('tbr', 0)))
                         total_size += estimate_size(best_audio, duration)
                 else:
                     format_info = next((f for f in formats if f.get('format_id') == audio_format), None)
