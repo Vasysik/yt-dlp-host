@@ -1,14 +1,53 @@
 from functools import wraps
 from flask import request, jsonify
 from src.json_utils import load_keys, save_keys, load_tasks
-from config import REQUEST_LIMIT, TASK_CLEANUP_TIME
+from config import REQUEST_LIMIT, TASK_CLEANUP_TIME, DEFAULT_MEMORY_QUOTA
+from config import DEFAULT_MEMORY_QUOTA_RATE, AVAILABLE_MEMORY
 from datetime import datetime, timedelta
 import secrets
 
 def generate_key():
     return secrets.token_urlsafe(32)
 
+def get_total_memory_usage():
+    keys = load_keys()
+    total_usage = 0
+    current_time = datetime.now()
+    
+    for key_info in keys.values():
+        if 'memory_usage' not in key_info:
+            continue
+
+        key_info['memory_usage'] = [
+            usage for usage in key_info['memory_usage']
+            if datetime.fromisoformat(usage['timestamp']) > current_time - timedelta(minutes=DEFAULT_MEMORY_QUOTA_RATE)
+        ]
+        total_usage += sum(usage['size'] for usage in key_info['memory_usage'])
+    return total_usage
+
+def check_server_memory(new_size=0):
+    total_usage = get_total_memory_usage()
+    
+    if total_usage + new_size > AVAILABLE_MEMORY:
+        current_usage_gb = total_usage / (1024 * 1024 * 1024)
+        new_size_gb = new_size / (1024 * 1024 * 1024)
+        available_gb = (AVAILABLE_MEMORY - total_usage) / (1024 * 1024 * 1024)
+        
+        error_msg = (
+            f"Server memory limit exceeded. "
+            f"Current usage: {current_usage_gb:.2f}GB, "
+            f"Requested: {new_size_gb:.2f}GB, "
+            f"Available: {available_gb:.2f}GB. "
+            "Please try downloading a smaller file or try again later."
+        )
+        return False, error_msg
+    return True, ""
+
 def check_memory_limit(api_key, new_size=0, task_id=None):
+    server_memory_ok, error_msg = check_server_memory(new_size)
+    if not server_memory_ok:
+        raise Exception(error_msg)
+    
     keys = load_keys()
     current_time = datetime.now()
     key_name = get_key_name(api_key)
@@ -17,19 +56,27 @@ def check_memory_limit(api_key, new_size=0, task_id=None):
         
     key_info = keys[key_name]
     if 'memory_quota' not in key_info:
-        key_info['memory_quota'] = 5 * 1024 * 1024 * 1024  # 5GB
+        key_info['memory_quota'] = DEFAULT_MEMORY_QUOTA
     if 'memory_usage' not in key_info:
         key_info['memory_usage'] = []
     
     key_info['memory_usage'] = [
         usage for usage in key_info['memory_usage']
-        if datetime.fromisoformat(usage['timestamp']) > current_time - timedelta(minutes=10)
+        if datetime.fromisoformat(usage['timestamp']) > current_time - timedelta(minutes=DEFAULT_MEMORY_QUOTA_RATE)
     ]
     
     current_usage = sum(usage['size'] for usage in key_info['memory_usage'])
 
     if current_usage + new_size > key_info['memory_quota']:
-        return False
+        current_usage_gb = current_usage / (1024 * 1024 * 1024)
+        quota_gb = key_info['memory_quota'] / (1024 * 1024 * 1024)
+        new_size_gb = new_size / (1024 * 1024 * 1024)
+        raise Exception(
+            f"User memory quota exceeded. "
+            f"Current usage: {current_usage_gb:.2f}GB, "
+            f"Requested: {new_size_gb:.2f}GB, "
+            f"Quota: {quota_gb:.2f}GB"
+        )
     
     if new_size > 0:
         key_info['current_usage'] = current_usage + new_size
@@ -37,7 +84,7 @@ def check_memory_limit(api_key, new_size=0, task_id=None):
             'size': new_size,
             'timestamp': current_time.isoformat(),
             'task_id': task_id
-        }),
+        })
         key_info['last_access'] = current_time.isoformat()
     
     keys[key_name] = key_info
