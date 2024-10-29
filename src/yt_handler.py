@@ -17,37 +17,43 @@ def get_format_size(info, format_id):
             return f.get('filesize') or f.get('filesize_approx', 0)
     return 0
 
-def get_best_format_size(info, formats, formats_list, is_video=True):
-    if not formats_list:
-        return 0
-    formats_with_size = [f for f in formats_list if (f.get('filesize') or f.get('filesize_approx', 0)) > 0]
+def get_max_size_for_format(info, formats_list, target_format=None, is_video=True):
+    if not formats_list: return 0
     
-    if formats_with_size:
+    if is_video:
+        filtered_formats = [f for f in formats_list if f.get('vcodec') != 'none' and f.get('acodec') == 'none']
+    else:
+        filtered_formats = [f for f in formats_list if f.get('acodec') != 'none' and f.get('vcodec') == 'none']
+    if not filtered_formats: return 0
+
+    if target_format and target_format not in ['bestvideo', 'bestaudio']:
+        format_info = next((f for f in filtered_formats if f.get('format_id') == target_format), None)
+        if format_info:
+            filtered_formats = [format_info]
+    
+    sizes = []
+    for fmt in filtered_formats:
+        known_size = fmt.get('filesize') or fmt.get('filesize_approx', 0)
+        if known_size > 0:
+            sizes.append(known_size)
+            continue
+        
+        tbr = fmt.get('tbr', 0) or fmt.get('abr', 0) or fmt.get('vbr', 0)
+        if tbr and info.get('duration'):
+            estimated_size = int(tbr * info['duration'] * 128 * 1024 / 8)
+            if estimated_size > 0:
+                sizes.append(estimated_size)
+                continue
+        
         if is_video:
-            return max(formats_with_size, 
-                        key=lambda f: (f.get('height', 0), f.get('tbr', 0)))
+            height = fmt.get('height', 0)
+            fps = fmt.get('fps', 0)
+            if height and fps:
+                estimated_size = int(height * fps * info.get('duration', 0) * 1024)
+                sizes.append(estimated_size)
         else:
-            return max(formats_with_size, 
-                        key=lambda f: (f.get('abr', 0) or f.get('tbr', 0)))
-    
-    best_format = max(formats_list, 
-                    key=lambda f: (f.get('height', 0), f.get('tbr', 0)) if is_video 
-                    else (f.get('abr', 0) or f.get('tbr', 0)))
-    
-    if best_format.get('tbr'):
-        estimated_size = int(best_format['tbr'] * info.get('duration', 0) * 128 * 1024 / 8)
-        if estimated_size > 0:
-            return best_format
-    
-    similar_formats = [f for f in formats if f.get('height', 0) == best_format.get('height', 0)] if is_video \
-                    else [f for f in formats if abs(f.get('abr', 0) - best_format.get('abr', 0)) < 50]
-    
-    sizes = [f.get('filesize') or f.get('filesize_approx', 0) for f in similar_formats]
-    if sizes and any(sizes):
-        best_format['filesize_approx'] = max(s for s in sizes if s > 0)
-        return best_format
-    
-    return best_format
+            sizes.append(int(info.get('duration', 0) * 128 * 1024 / 8))
+    return max(sizes) if sizes else -1
 
 def check_and_get_size(url, video_format=None, audio_format=None):
     try:
@@ -63,27 +69,16 @@ def check_and_get_size(url, video_format=None, audio_format=None):
             formats = info['formats']
             total_size = 0
             
-            
-            
             if video_format:
-                if video_format == 'bestvideo':
-                    video_formats = [f for f in formats if f.get('vcodec') != 'none' and f.get('acodec') == 'none']
-                    best_video = get_best_format_size(info, formats, video_formats, is_video=True)
-                    total_size += best_video.get('filesize') or best_video.get('filesize_approx', 0)
-                else:
-                    format_info = next((f for f in formats if f.get('format_id') == video_format), None)
-                    if format_info:
-                        total_size += format_info.get('filesize') or format_info.get('filesize_approx', 0)
+                video_size = get_max_size_for_format(info, formats, video_format, is_video=True)
+                if video_size > 0: total_size += video_size
+                else: return -1
 
             if audio_format:
-                if audio_format == 'bestaudio':
-                    audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') == 'none']
-                    best_audio = get_best_format_size(info, formats, audio_formats, is_video=False)
-                    total_size += best_audio.get('filesize') or best_audio.get('filesize_approx', 0)
-                else:
-                    format_info = next((f for f in formats if f.get('format_id') == audio_format), None)
-                    if format_info:
-                        total_size += format_info.get('filesize') or format_info.get('filesize_approx', 0)
+                audio_size = get_max_size_for_format(info, formats, audio_format, is_video=False)
+                if audio_size > 0: total_size += audio_size
+                else: return -1
+            
             total_size = int(total_size * 1.10)            
             return total_size if total_size > 0 else -1 
     except Exception as e:

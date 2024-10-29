@@ -12,21 +12,25 @@ def check_memory_limit(api_key, new_size=0):
     keys = load_keys()
     current_time = datetime.now()
     key_info = keys[get_key_name(api_key)]
-    
     if 'memory_quota' not in key_info:
         key_info['memory_quota'] = 5 * 1024 * 1024 * 1024  # 5GB
-    if 'current_memory_usage' not in key_info:
-        key_info['current_memory_usage'] = 0
-    if 'last_access' not in key_info:
-        key_info['last_access'] = current_time.isoformat()
-    last_access = datetime.fromisoformat(key_info['last_access'])
-    if (current_time - last_access) > timedelta(minutes=10):
-        key_info['current_memory_usage'] = 0
-    if key_info['current_memory_usage'] + new_size > key_info['memory_quota']:
+    if 'memory_usage' not in key_info:
+        key_info['memory_usage'] = []
+    
+    key_info['memory_usage'] = [
+        usage for usage in key_info['memory_usage']
+        if (current_time - datetime.fromisoformat(usage['timestamp'])).total_seconds() < 600
+    ]
+    current_usage = sum(usage['size'] for usage in key_info['memory_usage'])
+
+    if current_usage + new_size > key_info['memory_quota']:
         return False
+    
     if new_size > 0:
-        key_info['current_memory_usage'] += new_size
-        key_info['last_access'] = current_time.isoformat()
+        key_info['memory_usage'].append({
+            'timestamp': current_time.isoformat(),
+            'size': new_size
+        })
         save_keys(keys)
     return True
 
