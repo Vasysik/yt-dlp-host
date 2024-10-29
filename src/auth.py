@@ -8,7 +8,7 @@ import secrets
 def generate_key():
     return secrets.token_urlsafe(32)
 
-def check_memory_limit(api_key, task_id=None, new_size=0):
+def check_memory_limit(api_key, new_size=0, task_id=None):
     keys = load_keys()
     current_time = datetime.now()
     key_name = get_key_name(api_key)

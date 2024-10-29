@@ -135,7 +135,7 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
             return
         api_key = keys[key_name]['key']
 
-        if not check_memory_limit(api_key, total_size):
+        if not check_memory_limit(api_key, total_size, task_id):
             raise Exception("Memory limit exceeded. Maximum 5GB per 10 minutes.")
         
         download_path = os.path.join(DOWNLOAD_DIR, task_id)
