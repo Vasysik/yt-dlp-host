@@ -4,6 +4,7 @@ from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
 from src.json_utils import load_tasks, save_tasks, load_keys
 from src.auth import check_memory_limit
 import yt_dlp, os, threading, json, time, shutil
+from yt_dlp.utils import download_range_func
 
 executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
@@ -157,17 +158,8 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         if tasks[task_id].get('start_time') or tasks[task_id].get('end_time'):
             start_time = tasks[task_id].get('start_time', '00:00:00')
             end_time = tasks[task_id].get('end_time', '99:59:59')
-
-            def time_to_seconds(time_str):
-                h, m, s = time_str.split(':')
-                return float(h) * 3600 + float(m) * 60 + float(s)
             
-            ydl_opts['download_sections'] = [{
-                'section': {
-                    'start_time': time_to_seconds(start_time),
-                    'end_time': time_to_seconds(end_time)
-                }
-            }]
+            ydl_opts['download_sections'] = download_range_func(None, [(start_time, end_time)])
             ydl_opts['force_keyframes_at_cuts'] = True
         
         try:
