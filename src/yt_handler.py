@@ -157,7 +157,17 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         if tasks[task_id].get('start_time') or tasks[task_id].get('end_time'):
             start_time = tasks[task_id].get('start_time', '00:00:00')
             end_time = tasks[task_id].get('end_time', '99:59:59')
-            ydl_opts['download_sections'] = f"*{start_time}-{end_time}"
+
+            def time_to_seconds(time_str):
+                h, m, s = time_str.split(':')
+                return float(h) * 3600 + float(m) * 60 + float(s)
+            
+            ydl_opts['download_sections'] = [{
+                'section': {
+                    'start_time': time_to_seconds(start_time),
+                    'end_time': time_to_seconds(end_time)
+                }
+            }]
             ydl_opts['force_keyframes_at_cuts'] = True
         
         try:
