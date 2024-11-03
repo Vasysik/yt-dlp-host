@@ -73,13 +73,19 @@ Initiates a video get_video task from the specified URL.
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
       "video_format": "bestvideo[height<=1080]",
-      "audio_format": "bestaudio[abr<=129]"
+      "audio_format": "bestaudio[abr<=129]",
+      "start_time": 30,
+      "end_time": 60,
+      "force_keyframes": false
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the video to be downloaded.
   - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
+  - `start_time` (optional): Starting point for video fragment in seconds
+  - `end_time` (optional): Ending point for video fragment in seconds
+  - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false
 - **Permissions:** Requires the `get_video` permission.
 - **Response:**
   ```json
@@ -101,11 +107,19 @@ Initiates a audio get_audio task from the specified URL.
 - **Body:**
   ```json
   {
-      "url": "https://youtu.be/1FPdtR_5KFo"
+      "url": "https://youtu.be/1FPdtR_5KFo",
+      "audio_format": "bestaudio[abr<=129]",
+      "start_time": 30,
+      "end_time": 60,
+      "force_keyframes": false
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the audio to be downloaded.
+  - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
+  - `start_time` (optional): Starting point for video fragment in seconds
+  - `end_time` (optional): Ending point for video fragment in seconds
+  - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false
 - **Permissions:** Requires the `get_audio` permission.
 - **Response:**
   ```json
@@ -162,12 +176,14 @@ Initiates a audio get_live_audio task from the specified URL.
   ```json
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
+      "audio_format": "bestaudio[abr<=129]",
       "start": 0,
       "duration": 300
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the live stream to be downloaded.
+  - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
   - `start` (optional): The starting point in seconds for the stream recording.
   - `duration` (required): The length of the recording in seconds from the start point.
 - **Permissions:** Requires the `get_live_audio` permission.
