@@ -23,6 +23,7 @@ def get_video():
     audio_format = data.get('audio_format', 'bestaudio')
     start_time = data.get('start_time')
     end_time = data.get('end_time')
+    force_keyframes = data.get('force_keyframes')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -37,7 +38,8 @@ def get_video():
         'video_format': video_format,
         'audio_format': audio_format,
         'start_time': start_time,
-        'end_time': end_time
+        'end_time': end_time,
+        'force_keyframes': force_keyframes
     }
     save_tasks(tasks)
 
@@ -51,6 +53,7 @@ def get_audio():
     audio_format = data.get('audio_format', 'bestaudio')
     start_time = data.get('start_time')
     end_time = data.get('end_time')
+    force_keyframes = data.get('force_keyframes')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -64,7 +67,8 @@ def get_audio():
         'url': url,
         'audio_format': audio_format,
         'start_time': start_time,
-        'end_time': end_time
+        'end_time': end_time,
+        'force_keyframes': force_keyframes
     }
     save_tasks(tasks)
 

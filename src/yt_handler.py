@@ -166,7 +166,7 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
             end_seconds = time_to_seconds(end_time)
 
             ydl_opts['download_ranges'] = download_range_func(None, [(start_seconds, end_seconds)])
-            ydl_opts['force_keyframes_at_cuts'] = True
+            ydl_opts['force_keyframes_at_cuts'] = tasks[task_id].get('force_keyframes', False)
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
