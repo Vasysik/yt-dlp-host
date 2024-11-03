@@ -156,8 +156,8 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         }
 
         if tasks[task_id].get('start_time') or tasks[task_id].get('end_time'):
-            start_time = tasks[task_id].get('start_time', '00:00:00')
-            end_time = tasks[task_id].get('end_time', '99:59:59')
+            start_time = tasks[task_id].get('start_time') or '00:00:00'
+            end_time = tasks[task_id].get('end_time') or '10:00:00'
 
             def time_to_seconds(time_str):
                 h, m, s = time_str.split(':')
