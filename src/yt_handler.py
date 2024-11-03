@@ -153,6 +153,13 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
             'outtmpl': os.path.join(download_path, output_template),
             'merge_output_format': 'mp4' if type.lower() == 'video' else None
         }
+
+        if tasks[task_id].get('start_time') or tasks[task_id].get('end_time'):
+            start_time = tasks[task_id].get('start_time', '00:00:00')
+            end_time = tasks[task_id].get('end_time', '99:59:59')
+            download_range = f"*{start_time}-{end_time}"
+            ydl_opts['download_sections'] = [download_range]
+            ydl_opts['force_keyframes_at_cuts'] = True
         
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

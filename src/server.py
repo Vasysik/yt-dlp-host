@@ -21,21 +21,13 @@ def get_video():
     url = data.get('url')
     video_format = data.get('video_format', 'bestvideo')
     audio_format = data.get('audio_format', 'bestaudio')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
     
     task_id = generate_random_id()
-    # keys = load_keys()
-    # key_name = auth.get_key_name(request.headers.get('X-API-Key'))
-    # key_info = keys[key_name]
-
-    # if 'task_ids' not in key_info:
-    #     key_info['task_ids'] = []
-    # key_info['task_ids'].append(task_id)
-    # keys[key_name] = key_info
-    # auth.save_keys(keys)
-
     tasks = load_tasks()
     tasks[task_id] = {
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
@@ -43,7 +35,9 @@ def get_video():
         'task_type': 'get_video',
         'url': url,
         'video_format': video_format,
-        'audio_format': audio_format
+        'audio_format': audio_format,
+        'start_time': start_time,
+        'end_time': end_time
     }
     save_tasks(tasks)
 
@@ -55,28 +49,22 @@ def get_audio():
     data = request.json
     url = data.get('url')
     audio_format = data.get('audio_format', 'bestaudio')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
     
     task_id = generate_random_id()
-    # keys = load_keys()
-    # key_name = auth.get_key_name(request.headers.get('X-API-Key'))
-    # key_info = keys[key_name]
-
-    # if 'task_ids' not in key_info:
-    #     key_info['task_ids'] = []
-    # key_info['task_ids'].append(task_id)
-    # keys[key_name] = key_info
-    # auth.save_keys(keys)
-
     tasks = load_tasks()
     tasks[task_id] = {
         'key_name': auth.get_key_name(request.headers.get('X-API-Key')),
         'status': 'waiting',
         'task_type': 'get_audio',
         'url': url,
-        'audio_format': audio_format
+        'audio_format': audio_format,
+        'start_time': start_time,
+        'end_time': end_time
     }
     save_tasks(tasks)
 
