@@ -241,7 +241,7 @@ def get_file(filename):
     response = send_from_directory(DOWNLOAD_DIR, filename, as_attachment=raw)
     response.headers['Accept-Ranges'] = 'bytes'
     response.headers['Cache-Control'] = 'public, max-age=3600'
-    if raw: response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    if raw: response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
 
 @app.route('/create_key', methods=['POST'])
