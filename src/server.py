@@ -237,7 +237,12 @@ def get_file(filename):
             else:
                 return jsonify({"error": "No matching parameters found"}), 404
         return jsonify(data)
-    return send_from_directory(DOWNLOAD_DIR, filename)
+    raw = request.args.get('raw', 'false').lower() == 'true'
+    response = send_from_directory(DOWNLOAD_DIR, filename, as_attachment=raw)
+    response.headers['Accept-Ranges'] = 'bytes'
+    response.headers['Cache-Control'] = 'public, max-age=3600'
+    if raw: response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 @app.route('/create_key', methods=['POST'])
 @auth.check_api_key('create_key')
