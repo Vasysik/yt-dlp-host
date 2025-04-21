@@ -2,7 +2,7 @@ services:
   yt-dlp-host:
     build: .
     ports:
-      - "5000:5000"
+      - "5001:5001"
     volumes:
       - ./downloads:/app/downloads
       - ./jsons:/app/jsons
@@ -10,4 +10,5 @@ services:
     environment:
       - FLASK_APP=src.server:app
       - FLASK_RUN_HOST=0.0.0.0
+      - FLASK_RUN_PORT=5001
     restart: unless-stopped

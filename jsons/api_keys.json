@@ -1,1 +1,21 @@
-{}
+{
+    "admin": {
+        "key": "6_89xX1bzVN_hLG5EqmNxTBXYcfz-YKA_PfxaIK2rFs",
+        "permissions": [
+            "create_key",
+            "delete_key",
+            "get_key",
+            "get_keys",
+            "get_video",
+            "get_audio",
+            "get_live_video",
+            "get_live_audio",
+            "get_info"
+        ],
+        "memory_quota": 5368709120,
+        "current_usage": 0,
+        "task_ids": [],
+        "memory_usage": [],
+        "last_access": "2025-04-21T06:35:17.666867"
+    }
+}

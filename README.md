@@ -29,18 +29,12 @@ This API offers a range of endpoints for downloading YouTube videos, retrieving 
 
 To run the server, follow these steps:
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/your-username/youtube-downloader-api.git
-   cd youtube-downloader-api
-   ```
-
-2. Build and run the Docker container:
+1. Build and run the Docker container:
    ```
    docker-compose up --build
    ```
 
-3. The server will be accessible at `http://localhost:5000`.
+3. The server will be accessible at `http://localhost:5001`.
 
 ## Configuration
 
@@ -416,7 +410,7 @@ Common error codes:
 import requests
 
 api_key = "your_api_key_here"
-base_url = "http://api.example.com"
+base_url = "http://api.example.com:5001"
 
 headers = {
     "X-API-Key": api_key,
@@ -439,7 +433,7 @@ print(response.json())
 import requests
 
 api_key = "your_api_key_here"
-base_url = "http://api.example.com"
+base_url = "http://api.example.com:5001"
 task_id = "abcdefgh12345678"
 
 headers = {
