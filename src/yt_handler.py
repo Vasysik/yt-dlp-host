@@ -258,20 +258,34 @@ def process_tasks():
         current_time = datetime.now()
         for task_id, task in list(tasks.items()):
             if task['status'] == 'waiting':
+                # Use .get() with defaults to handle older tasks missing format keys
+                video_format = task.get('video_format', 'bestvideo')
+                audio_format = task.get('audio_format', 'bestaudio')
+
                 if task['task_type'] == 'get_video':
-                    executor.submit(get, task_id, task['url'], 'video', task['video_format'], task['audio_format'])
+                    executor.submit(get, task_id, task['url'], 'video', video_format, audio_format)
                 elif task['task_type'] == 'get_audio':
-                    executor.submit(get, task_id, task['url'], 'audio', 'bestvideo', task['audio_format'])
+                    # Audio tasks primarily need audio_format, video_format can default
+                    executor.submit(get, task_id, task['url'], 'audio', 'bestvideo', audio_format)
                 elif task['task_type'] == 'get_info':
                     executor.submit(get_info, task_id, task['url'])
                 elif task['task_type'] == 'get_live_video':
-                    executor.submit(get_live, task_id, task['url'], 'video', task['start'], task['duration'], task['video_format'], task['audio_format'])
+                    executor.submit(get_live, task_id, task['url'], 'video', task['start'], task['duration'], video_format, audio_format)
                 elif task['task_type'] == 'get_live_audio':
-                    executor.submit(get_live, task_id, task['url'], 'audio', task['start'], task['duration'], 'bestvideo', task['audio_format'])
+                    # Live audio tasks primarily need audio_format
+                    executor.submit(get_live, task_id, task['url'], 'audio', task['start'], task['duration'], 'bestvideo', audio_format)
             elif task['status'] in ['completed', 'error']:
-                completed_time = datetime.fromisoformat(task['completed_time'])
-                if current_time - completed_time > timedelta(minutes=TASK_CLEANUP_TIME):
-                    cleanup_task(task_id)
+                # Ensure completed_time exists before parsing
+                completed_time_str = task.get('completed_time')
+                if completed_time_str:
+                    try:
+                        completed_time = datetime.fromisoformat(completed_time_str)
+                        if current_time - completed_time > timedelta(minutes=TASK_CLEANUP_TIME):
+                            cleanup_task(task_id)
+                    except ValueError:
+                        print(f"Warning: Invalid date format for completed_time in task {task_id}: {completed_time_str}")
+                        # Optionally handle the error, e.g., remove the task or set a default cleanup time
+                        # cleanup_task(task_id) # Uncomment to cleanup tasks with invalid dates
         if current_time.minute % 5 == 0 and current_time.second == 0:
             cleanup_orphaned_folders()
         time.sleep(1)

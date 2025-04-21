@@ -22,6 +22,8 @@ def get_video():
     start_time = data.get('start_time')
     end_time = data.get('end_time')
     force_keyframes = data.get('force_keyframes')
+    video_format = data.get('video_format', 'bestvideo')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -35,7 +37,9 @@ def get_video():
         'url': url,
         'start_time': start_time,
         'end_time': end_time,
-        'force_keyframes': force_keyframes
+        'force_keyframes': force_keyframes,
+        'video_format': video_format,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -49,6 +53,8 @@ def get_audio():
     start_time = data.get('start_time')
     end_time = data.get('end_time')
     force_keyframes = data.get('force_keyframes')
+    video_format = data.get('video_format', 'bestvideo')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -62,7 +68,9 @@ def get_audio():
         'url': url,
         'start_time': start_time,
         'end_time': end_time,
-        'force_keyframes': force_keyframes
+        'force_keyframes': force_keyframes,
+        'video_format': video_format,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -106,6 +114,8 @@ def get_live_video():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration')
+    video_format = data.get('video_format', 'bestvideo')
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -128,7 +138,9 @@ def get_live_video():
         'task_type': 'get_live_video',
         'url': url,
         'start': start,
-        'duration': duration
+        'duration': duration,
+        'video_format': video_format,
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 
@@ -141,6 +153,7 @@ def get_live_audio():
     url = data.get('url')
     start = data.get('start', 0)
     duration = data.get('duration', 5)
+    audio_format = data.get('audio_format', 'bestaudio')
     
     if not url:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -163,7 +176,9 @@ def get_live_audio():
         'task_type': 'get_live_audio',
         'url': url,
         'start': start,
-        'duration': duration
+        'duration': duration,
+        'video_format': 'bestvideo',
+        'audio_format': audio_format
     }
     save_tasks(tasks)
 

@@ -1,11 +1,25 @@
 {
     "V0ppuZPdQfnvEnsX": {
         "key_name": "test_downloader",
-        "status": "waiting",
+        "status": "completed",
         "task_type": "get_video",
         "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         "start_time": "00:00:00",
         "end_time": "00:00:10",
-        "force_keyframes": null
+        "force_keyframes": null,
+        "completed_time": "2025-04-21T12:55:28.782358",
+        "file": "/files/V0ppuZPdQfnvEnsX/video.mp4"
+    },
+    "0RTe0YWnzzbXbiLx": {
+        "key_name": "test_downloader",
+        "status": "completed",
+        "task_type": "get_video",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "start_time": "00:00:00",
+        "end_time": "00:00:10",
+        "force_keyframes": null,
+        "error": "Task was interrupted during processing",
+        "completed_time": "2025-04-21T12:55:30.686634",
+        "file": "/files/0RTe0YWnzzbXbiLx/video.mp4"
     }
 }
