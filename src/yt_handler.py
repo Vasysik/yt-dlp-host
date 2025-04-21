@@ -55,7 +55,8 @@ def check_and_get_size(url, video_format=None, audio_format=None):
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
-            'skip_download': True
+            'skip_download': True,
+            'cookiefile': 'youtube_cookies.txt'
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -125,34 +126,28 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         tasks[task_id].update(status='processing')
         save_tasks(tasks)
 
-        total_size = check_and_get_size(url, video_format if type.lower() == 'video' else None, audio_format)
-        if total_size <= 0: handle_task_error(task_id, f"Error getting size: {total_size}")
+        if type.lower() == 'audio':
+            format_option = f'{audio_format}/bestaudio/best'
+            output_template = f'audio.%(ext)s'
+        else:
+            format_option = f'{video_format}+{audio_format}/bestvideo+bestaudio/best'
+            output_template = f'video.%(ext)s'
 
         key_name = tasks[task_id].get('key_name')
         keys = load_keys()
         if key_name not in keys:
             handle_task_error(task_id, "Invalid API key")
             return
-        api_key = keys[key_name]['key']
 
-        if not check_memory_limit(api_key, total_size, task_id):
-            raise Exception("Memory limit exceeded. Maximum 5GB per 10 minutes.")
-        
         download_path = os.path.join(DOWNLOAD_DIR, task_id)
         if not os.path.exists(download_path):
             os.makedirs(download_path)
 
-        if type.lower() == 'audio':
-            format_option = f'{audio_format}/best'
-            output_template = f'audio.%(ext)s'
-        else:
-            format_option = f'{video_format}+{audio_format}/best'
-            output_template = f'video.%(ext)s'
-
         ydl_opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
-            'merge_output_format': 'mp4' if type.lower() == 'video' else None
+            'merge_output_format': 'mp4' if type.lower() == 'video' else None,
+            'cookiefile': 'youtube_cookies.txt'
         }
 
         if tasks[task_id].get('start_time') or tasks[task_id].get('end_time'):
@@ -206,7 +201,8 @@ def get_live(task_id, url, type, start, duration, video_format="bestvideo", audi
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
             'download_ranges': lambda info, *args: [{'start_time': start_time, 'end_time': end_time,}],
-            'merge_output_format': 'mp4' if type.lower() == 'video' else None
+            'merge_output_format': 'mp4' if type.lower() == 'video' else None,
+            'cookiefile': 'youtube_cookies.txt'
         }
         
         try:

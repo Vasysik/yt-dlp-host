@@ -2,3 +2,12 @@
 /downloads
 /venv
 /__pycache__
+
+# Don't include persoanl cookies
+youtube_cookies.txt
+
+# Don't include macos files
+.DS_Store
+
+# api keys
+api_keys.json

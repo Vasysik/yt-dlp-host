@@ -1,1 +1,11 @@
-{}
+{
+    "V0ppuZPdQfnvEnsX": {
+        "key_name": "test_downloader",
+        "status": "waiting",
+        "task_type": "get_video",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "start_time": "00:00:00",
+        "end_time": "00:00:10",
+        "force_keyframes": null
+    }
+}

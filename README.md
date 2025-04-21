@@ -34,7 +34,28 @@ To run the server, follow these steps:
    docker-compose up --build
    ```
 
-3. The server will be accessible at `http://localhost:5001`.
+2. The server will be accessible at `http://localhost:5001`.
+
+3. Test it
+```bash
+curl -X POST \
+  http://127.0.0.1:5001/get_video \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: HRlnuuSGlpZdiktEflILeG9m6jrgvXoiah-ZlCxFkiw" \
+  -d '{
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "start_time": "00:00:00",
+    "end_time": "00:00:10"
+  }'
+```
+
+4. Get youtube_cookies.txt from chrome browser by
+
+```bash
+yt-dlp \ --cookies-from-browser chrome \ --cookies youtube_cookies.txt \ --skip-download https://www.youtube.com/watch\?v\=1XF-NG_35NE
+
+yt-dlp --cookies-from-browser chrome --cookies youtube_cookies.txt --skip-download https://www.youtube.com/watch\?v\=1XF-NG_35NE
+```
 
 ## Configuration
 
