@@ -1,2 +1,6 @@
 Flask==3.0.3
-yt-dlp==2024.8.6
+yt-dlp==2024.08.06
+gunicorn
+google-cloud-storage
+google-cloud-secret-manager
+Flask-Cors
