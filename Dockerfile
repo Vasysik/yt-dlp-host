@@ -9,13 +9,13 @@ RUN apt-get update && \
 
 # Python deps
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
- && pip install --no-cache-dir --upgrade yt-dlp  
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
 ENV FLASK_APP=src.server:app \
-    FLASK_RUN_HOST=0.0.0.0 \
-    FLASK_RUN_PORT=5000
+    FLASK_RUN_HOST=0.0.0.0
 
-CMD ["flask", "run", "--no-debugger", "--reload"]
+# Use Gunicorn for production on Cloud Run
+# It listens on the port specified by the PORT environment variable ($PORT)
+CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "4", "--timeout", "300", "src.server:app"]
