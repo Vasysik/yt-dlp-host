@@ -6,34 +6,12 @@ from src.yt_handler import storage_client
 import src.yt_handler as yt_handler
 import os, logging
 from datetime import timedelta
+from src.auth import check_api_key, get_key_name
 
 app = Flask(__name__)
 CORS(app)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-try:
-    import src.auth as auth
-except ImportError:
-    logging.error("Failed to import auth module. API key features may not work.")
-    class DummyAuth:
-        def require_key(self, permissions=None):
-            def decorator(f):
-                 @wraps(f)
-                 def decorated_function(*args, **kwargs):
-                    return f(*args, **kwargs)
-                 return decorated_function
-            return decorator
-        def check_permissions(self, permission):
-             def decorator(f):
-                 @wraps(f)
-                 def decorated_function(*args, **kwargs):
-                    return f(*args, **kwargs)
-                 return decorated_function
-             return decorator
-        def get_key_name(self, key): return "dummy"
-    auth = DummyAuth()
-from functools import wraps
 
 if not os.path.exists(DOWNLOAD_DIR):
     try:
@@ -47,9 +25,9 @@ def generate_random_id(length=16):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 @app.route('/get_video', methods=['POST'])
-@auth.require_key(permissions=['get_video'])
+@check_api_key('get_video')
 def get_video():
-    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_name = get_key_name(request.headers.get('X-API-Key'))
     data = request.get_json()
     if not data or 'url' not in data:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -77,9 +55,9 @@ def get_video():
     return jsonify({'status': 'waiting', 'task_id': task_id})
 
 @app.route('/get_audio', methods=['POST'])
-@auth.require_key(permissions=['get_audio'])
+@check_api_key('get_audio')
 def get_audio():
-    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_name = get_key_name(request.headers.get('X-API-Key'))
     data = request.get_json()
     if not data or 'url' not in data:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -105,9 +83,9 @@ def get_audio():
     return jsonify({'status': 'waiting', 'task_id': task_id})
 
 @app.route('/get_info', methods=['POST'])
-@auth.require_key(permissions=['get_info'])
+@check_api_key('get_info')
 def get_info():
-    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_name = get_key_name(request.headers.get('X-API-Key'))
     data = request.get_json()
     if not data or 'url' not in data:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -125,9 +103,9 @@ def get_info():
     return jsonify({'status': 'waiting', 'task_id': task_id})
 
 @app.route('/get_live_video', methods=['POST'])
-@auth.require_key(permissions=['get_live_video'])
+@check_api_key('get_live_video')
 def get_live_video():
-    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_name = get_key_name(request.headers.get('X-API-Key'))
     data = request.get_json()
     if not data or 'url' not in data:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -155,9 +133,9 @@ def get_live_video():
     return jsonify({'status': 'waiting', 'task_id': task_id})
 
 @app.route('/get_live_audio', methods=['POST'])
-@auth.require_key(permissions=['get_live_audio'])
+@check_api_key('get_live_audio')
 def get_live_audio():
-    key_name = auth.get_key_name(request.headers.get('X-API-Key'))
+    key_name = get_key_name(request.headers.get('X-API-Key'))
     data = request.get_json()
     if not data or 'url' not in data:
         return jsonify({'status': 'error', 'message': 'URL is required'}), 400
@@ -184,7 +162,7 @@ def get_live_audio():
     return jsonify({'status': 'waiting', 'task_id': task_id})
 
 @app.route('/status/<task_id>', methods=['GET'])
-@auth.require_key() 
+@check_api_key('get_status')
 def status(task_id):
     tasks = load_tasks()
     if task_id not in tasks:
@@ -192,7 +170,9 @@ def status(task_id):
     return jsonify(tasks[task_id])
 
 @app.route('/files/<path:filename>', methods=['GET'])
+@check_api_key('get_file')
 def get_file(filename):
+    key_name = get_key_name(request.headers.get('X-API-Key'))
     if USE_GCS_DOWNLOADS:
         if not storage_client or not DOWNLOAD_BUCKET:
             logging.error("GCS check failed: client or bucket not configured.")
@@ -229,7 +209,7 @@ def get_file(filename):
             return jsonify({"error": "Failed to serve file."}), 500
 
 @app.route('/create_key', methods=['POST'])
-@auth.require_key(permissions=['create_key'])
+@check_api_key('create_key')
 def create_key():
     data = request.get_json()
     name = data.get('name')
@@ -246,7 +226,7 @@ def create_key():
     return jsonify({'name': name, 'key': new_key, 'permissions': permissions, 'memory_quota': memory_quota}), 201
 
 @app.route('/delete_key/<name>', methods=['DELETE'])
-@auth.require_key(permissions=['delete_key'])
+@check_api_key('delete_key')
 def delete_key(name):
     if auth.delete_key(name):
         return jsonify({'status': 'success', 'message': f'Key {name} deleted'}), 200
@@ -254,7 +234,7 @@ def delete_key(name):
         return jsonify({'status': 'error', 'message': f'Key {name} not found'}), 404
 
 @app.route('/get_key/<name>', methods=['GET'])
-@auth.require_key(permissions=['get_keys'])
+@check_api_key('get_key')
 def get_key(name):
     key_info = auth.get_key(name)
     if key_info:
@@ -263,7 +243,7 @@ def get_key(name):
         return jsonify({'status': 'error', 'message': 'Key not found'}), 404
 
 @app.route('/get_keys', methods=['GET'])
-@auth.require_key(permissions=['get_keys'])
+@check_api_key('get_keys')
 def get_keys():
     keys = auth.get_keys_info() 
     return jsonify(keys)

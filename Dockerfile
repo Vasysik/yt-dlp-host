@@ -18,4 +18,5 @@ ENV FLASK_APP=src.server:app \
 
 # Use Gunicorn for production on Cloud Run
 # It listens on the port specified by the PORT environment variable ($PORT)
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "4", "--timeout", "300", "src.server:app"]
+# Use /bin/sh -c to ensure $PORT variable expansion
+CMD ["/bin/sh", "-c", "gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 300 src.server:app"]

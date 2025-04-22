@@ -4,6 +4,8 @@ This document outlines the steps required to deploy the Flask-based YouTube Clip
 
 **Last Updated:** 2025-04-22
 
+**Selected GCP Region:** `asia-southeast1` (Singapore)
+
 ## 1. Prerequisites
 
 1.  **Google Cloud Project:** Ensure you have a Google Cloud project set up. Note the Project ID.
@@ -84,8 +86,8 @@ Significant changes are needed to make the application suitable for the stateles
 ## 3. Google Cloud Infrastructure Setup
 
 1.  **Artifact Registry:** Create a Docker repository.
-    *   `gcloud artifacts repositories create youtube-clipping-service --repository-format=docker --location=YOUR_REGION --description="Docker images for YouTube Clipping Service"`
-    *   Note the full repository path (e.g., `YOUR_REGION-docker.pkg.dev/YOUR_PROJECT_ID/youtube-clipping-service`).
+    *   `gcloud artifacts repositories create youtube-clipping-service --repository-format=docker --location=asia-southeast1 --description="Docker images for YouTube Clipping Service"`
+    *   Note the full repository path (e.g., `asia-southeast1-docker.pkg.dev/YOUR_PROJECT_ID/youtube-clipping-service`).
 2.  **Cloud Storage:** Create GCS bucket(s).
     *   **Bucket for State (if using GCS for JSON):** `gs://your-project-id-yt-state`
     *   **Bucket for Downloads:** `gs://your-project-id-yt-downloads`
@@ -98,33 +100,32 @@ Significant changes are needed to make the application suitable for the stateles
 ## 4. Build and Push Docker Image
 
 1.  **Authenticate Docker:** Configure Docker to authenticate with Artifact Registry:
-    *   `gcloud auth configure-docker YOUR_REGION-docker.pkg.dev`
+    *   `gcloud auth configure-docker asia-southeast1-docker.pkg.dev`
 2.  **Build:** Navigate to your project root directory (containing the `Dockerfile`).
-    *   `docker build -t YOUR_REGION-docker.pkg.dev/YOUR_PROJECT_ID/youtube-clipping-service/yt-clip-service:latest .`
+    *   `docker build -t asia-southeast1-docker.pkg.dev/YOUR_PROJECT_ID/youtube-clipping-service/yt-clip-service:latest .`
 3.  **Push:**
-    *   `docker push YOUR_REGION-docker.pkg.dev/YOUR_PROJECT_ID/youtube-clipping-service/yt-clip-service:latest`
+    *   `docker push asia-southeast1-docker.pkg.dev/YOUR_PROJECT_ID/youtube-clipping-service/yt-clip-service:latest`
 
 ## 5. Deploy to Cloud Run
 
 1.  **Initial Deployment:** Use the `gcloud run deploy` command. Replace placeholders.
     ```bash
     gcloud run deploy yt-clip-service \
-      --image YOUR_REGION-docker.pkg.dev/YOUR_PROJECT_ID/youtube-clipping-service/yt-clip-service:latest \
-      --platform managed \
-      --region YOUR_REGION \
-      --allow-unauthenticated \ # Or configure IAM for authentication
-      --set-env-vars="STATE_BUCKET=gs://your-project-id-yt-state" \
-      --set-env-vars="TASKS_OBJECT_PATH=tasks.json" \
-      --set-env-vars="KEYS_OBJECT_PATH=api_keys.json" \
-      --set-env-vars="DOWNLOAD_BUCKET=gs://your-project-id-yt-downloads" \
-      --set-env-vars="COOKIE_SECRET_VERSION=projects/YOUR_PROJECT_ID/secrets/youtube-cookie-data/versions/latest" \ # Example
-      --set-env-vars="MAX_WORKERS=4" \ # Adjust as needed
-      --memory=2Gi \ # Adjust based on testing
-      --cpu=1 \ # Adjust based on testing
-      --concurrency=10 \ # Adjust based on task duration and type
-      --timeout=600 \ # Set appropriate request timeout (max 3600s)
-      --service-account=YOUR_SERVICE_ACCOUNT_EMAIL # Optional: Use a specific service account
-      # Add database connection env vars if needed
+        --image asia-southeast1-docker.pkg.dev/YOUR_PROJECT_ID/youtube-clipping-service/yt-clip-service:latest \
+        --region asia-southeast1 \
+        --allow-unauthenticated \ # Or configure IAM for authentication
+        --set-env-vars="STATE_BUCKET=gs://your-project-id-yt-state" \
+        --set-env-vars="TASKS_OBJECT_PATH=tasks.json" \
+        --set-env-vars="KEYS_OBJECT_PATH=api_keys.json" \
+        --set-env-vars="DOWNLOAD_BUCKET=gs://your-project-id-yt-downloads" \
+        --set-env-vars="COOKIE_SECRET_VERSION=projects/YOUR_PROJECT_ID/secrets/youtube-cookie-data/versions/latest" \ # Example
+        --set-env-vars="MAX_WORKERS=4" \ # Adjust as needed
+        --memory=2Gi \ # Adjust based on testing
+        --cpu=1 \ # Adjust based on testing
+        --concurrency=10 \ # Adjust based on task duration and type
+        --timeout=600 \ # Set appropriate request timeout (max 3600s)
+        --service-account=YOUR_SERVICE_ACCOUNT_EMAIL # Optional: Use a specific service account
+        # Add database connection env vars if needed
     ```
 2.  **Service Account Permissions:** Ensure the Cloud Run service account (either the default Compute Engine service account or a dedicated one specified with `--service-account`) has the necessary IAM roles:
     *   `roles/storage.objectAdmin` on the state and download GCS buckets.

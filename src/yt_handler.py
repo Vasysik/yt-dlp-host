@@ -41,6 +41,7 @@ if USE_SECRET_MANAGER_COOKIES:
 
 def get_cookie_file_path():
     """Fetches cookies from Secret Manager if configured, writes to a temp file, and returns the path."""
+    logging.info("Attempting to determine cookie file path...")
     if secret_manager_client and COOKIE_SECRET_VERSION:
         try:
             logging.info(f"Attempting to fetch cookie secret: {COOKIE_SECRET_VERSION}")
@@ -319,9 +320,18 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
             return
 
         if not os.path.exists(local_download_path):
-            os.makedirs(local_download_path)
+            # Use exist_ok=True to prevent errors if the directory already exists
+            os.makedirs(local_download_path, exist_ok=True) 
+            logging.info(f"Ensured download directory exists: {local_download_path}") # Add log
+        else:
+            logging.warning(f"Download directory already exists: {local_download_path}") # Add log if exists
 
         cookie_file = get_cookie_file_path()
+        # Add logging to verify the cookie file path before use
+        logging.info(f"Using cookie file for task {task_id}: {cookie_file}") 
+        if cookie_file and not os.path.exists(cookie_file):
+             logging.warning(f"Cookie file specified but does not exist: {cookie_file}")
+
         ydl_opts = {
             'format': format_option,
             'outtmpl': os.path.join(local_download_path, output_template),
