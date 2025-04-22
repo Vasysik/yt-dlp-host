@@ -1,1 +1,54 @@
-{}
+{
+    "7XtYGiJ4H2WVIn3w": {
+        "key_name": "admin",
+        "status": "error",
+        "task_type": "get_video",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "video_format": "bestvideo",
+        "audio_format": "bestaudio",
+        "start_time": "00:00:00",
+        "end_time": "00:00:10",
+        "force_keyframes": false,
+        "error": "\u001b[0;31mERROR:\u001b[0m [youtube] dQw4w9WgXcQ: Sign in to confirm you\u2019re not a bot. This helps protect our community. Learn more",
+        "completed_time": "2025-04-22T17:26:00.720278"
+    },
+    "rzBpvYqrSEh6nWDq": {
+        "key_name": "admin",
+        "status": "error",
+        "task_type": "get_video",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "video_format": "bestvideo",
+        "audio_format": "bestaudio",
+        "start_time": "00:00:00",
+        "end_time": "00:00:10",
+        "force_keyframes": false,
+        "error": "\u001b[0;31mERROR:\u001b[0m [youtube] dQw4w9WgXcQ: Sign in to confirm you\u2019re not a bot. This helps protect our community. Learn more",
+        "completed_time": "2025-04-22T17:29:13.277245"
+    },
+    "i5USbgHPsWymkNZP": {
+        "key_name": "admin",
+        "status": "error",
+        "task_type": "get_video",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "video_format": "bestvideo",
+        "audio_format": "bestaudio",
+        "start_time": "00:00:00",
+        "end_time": "00:00:10",
+        "force_keyframes": false,
+        "error": "\u001b[0;31mERROR:\u001b[0m [youtube] dQw4w9WgXcQ: Sign in to confirm you\u2019re not a bot. This helps protect our community. Learn more",
+        "completed_time": "2025-04-22T17:31:24.534918"
+    },
+    "AL16Pk5uv40GwifG": {
+        "key_name": "admin",
+        "status": "error",
+        "task_type": "get_video",
+        "url": "https://www.youtube.com/watch?v=DXxO3ICZAJA",
+        "video_format": "bestvideo",
+        "audio_format": "bestaudio",
+        "start_time": "00:00:00",
+        "end_time": "00:00:10",
+        "force_keyframes": false,
+        "error": "\u001b[0;31mERROR:\u001b[0m [youtube] DXxO3ICZAJA: Sign in to confirm you\u2019re not a bot. This helps protect our community. Learn more",
+        "completed_time": "2025-04-22T17:33:23.070729"
+    }
+}

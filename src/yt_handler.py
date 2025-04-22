@@ -10,13 +10,18 @@ from src.auth import check_memory_limit
 import yt_dlp, os, threading, json, time, shutil, logging, tempfile
 from yt_dlp.utils import download_range_func
 
+# Get a logger for this module
+logger = logging.getLogger(__name__)
+# Explicitly set the level for this logger
+logger.setLevel(logging.WARN)
+
 # --- Cloud Clients (Initialize conditionally) ---
 storage_client = None
 if USE_GCS_DOWNLOADS:
     try:
         from google.cloud import storage
         storage_client = storage.Client()
-        logging.info(f"GCS Mode enabled for downloads. Bucket: {DOWNLOAD_BUCKET}")
+        logging.warn(f"GCS Mode enabled for downloads. Bucket: {DOWNLOAD_BUCKET}")
     except ImportError:
         logging.error("google-cloud-storage library not found, but DOWNLOAD_BUCKET is set.")
         storage_client = None
@@ -29,7 +34,7 @@ if USE_SECRET_MANAGER_COOKIES:
     try:
         from google.cloud import secretmanager
         secret_manager_client = secretmanager.SecretManagerServiceClient()
-        logging.info(f"Secret Manager enabled for cookies. Secret Version: {COOKIE_SECRET_VERSION}")
+        logging.warn(f"Secret Manager enabled for cookies. Secret Version: {COOKIE_SECRET_VERSION}")
     except ImportError:
         logging.error("google-cloud-secret-manager library not found, but COOKIE_SECRET_VERSION is set.")
         secret_manager_client = None
@@ -40,10 +45,11 @@ if USE_SECRET_MANAGER_COOKIES:
 # --- Helper Functions ---
 
 def get_cookie_file_path():
+    logging.warning("Entering get_cookie_file_path...")
     """Fetches cookies from Secret Manager if configured, writes to a temp file, and returns the path."""
-    logging.info("Attempting to determine cookie file path...")
+    logging.warn("Attempting to determine cookie file path...")
     if secret_manager_client and COOKIE_SECRET_VERSION:
-        logging.info(f"Secret Manager configured. Attempting to fetch secret: {COOKIE_SECRET_VERSION}")
+        logging.warn(f"Secret Manager configured. Attempting to fetch secret: {COOKIE_SECRET_VERSION}")
         try:
             response = secret_manager_client.access_secret_version(name=COOKIE_SECRET_VERSION)
             cookie_data = response.payload.data.decode("UTF-8")
@@ -53,18 +59,19 @@ def get_cookie_file_path():
             # For Cloud Run, /tmp is memory-backed and cleared on instance termination.
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', prefix='cookies_') as temp_file:
                 temp_file.write(cookie_data)
-                logging.info(f"Secret Manager Success: Cookies written to temporary file: {temp_file.name}")
+                logging.warn(f"Secret Manager Success: Cookies written to temporary file: {temp_file.name}")
                 return temp_file.name
         except Exception as e:
             logging.error(f"Secret Manager Error: Failed to fetch/write cookies: {e}. Falling back.")
             # Fallback to default local path if secret access fails
             return 'youtube_cookies.txt'
     else:
-        logging.info("Secret Manager not configured or secret version not provided. Using default path.")
+        logging.warn("Secret Manager not configured or secret version not provided. Using default path.")
         # Use default local path if Secret Manager is not configured
         return 'youtube_cookies.txt'
 
 def upload_to_gcs(local_path, destination_blob_prefix):
+    logging.warning("Entering upload_to_gcs...")
     """Uploads a file or directory to GCS and returns the GCS URI."""
     if not storage_client or not DOWNLOAD_BUCKET:
         logging.error("GCS client or bucket not configured for upload.")
@@ -80,7 +87,7 @@ def upload_to_gcs(local_path, destination_blob_prefix):
             blob = bucket.blob(destination_blob_name)
             blob.upload_from_filename(local_path)
             uploaded_uri = f"gs://{DOWNLOAD_BUCKET}/{destination_blob_name}"
-            logging.info(f"Uploaded {local_path} to {uploaded_uri}")
+            logging.warn(f"Uploaded {local_path} to {uploaded_uri}")
         elif os.path.isdir(local_path):
             # Upload directory contents (non-recursive for simplicity here)
             # Assume only one relevant file is in the directory for this app
@@ -94,7 +101,7 @@ def upload_to_gcs(local_path, destination_blob_prefix):
                     # Return the URI of the first file found in the directory
                     if not uploaded_uri:
                         uploaded_uri = f"gs://{DOWNLOAD_BUCKET}/{destination_blob_name}"
-                    logging.info(f"Uploaded {local_file} to gs://{DOWNLOAD_BUCKET}/{destination_blob_name}")
+                    logging.warn(f"Uploaded {local_file} to gs://{DOWNLOAD_BUCKET}/{destination_blob_name}")
                     uploaded_something = True
             if not uploaded_something:
                  logging.warning(f"No files found in directory {local_path} to upload.")
@@ -109,7 +116,7 @@ def upload_to_gcs(local_path, destination_blob_prefix):
                 os.remove(local_path)
             elif os.path.isdir(local_path):
                 shutil.rmtree(local_path)
-            logging.info(f"Cleaned up local path: {local_path}")
+            logging.warn(f"Cleaned up local path: {local_path}")
 
         return uploaded_uri
 
@@ -119,19 +126,15 @@ def upload_to_gcs(local_path, destination_blob_prefix):
         # For now, leave local files if upload fails.
         return None
 
-executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
-
-# Ensure local download dir exists for temporary storage before GCS upload
-if not os.path.exists(DOWNLOAD_DIR):
-    os.makedirs(DOWNLOAD_DIR)
-
-def get_format_size(info, format_id):
-    for f in info.get('formats', []):
+def get_format_size(warn, format_id):
+    logging.warning("Entering get_format_size...")
+    for f in warn.get('formats', []):
         if f.get('format_id') == format_id:
             return f.get('filesize') or f.get('filesize_approx', 0)
     return 0
 
-def get_best_format_size(info, formats, formats_list, is_video=True):
+def get_best_format_size(warn, formats, formats_list, is_video=True):
+    logging.warning("Entering get_best_format_size...")
     if not formats_list:
         return 0
     formats_with_size = [f for f in formats_list if (f.get('filesize') or f.get('filesize_approx', 0)) > 0]
@@ -149,7 +152,7 @@ def get_best_format_size(info, formats, formats_list, is_video=True):
                     else (f.get('abr', 0) or f.get('tbr', 0)))
     
     if best_format.get('tbr'):
-        estimated_size = int(best_format['tbr'] * info.get('duration', 0) * 128 * 1024 / 8)
+        estimated_size = int(best_format['tbr'] * warn.get('duration', 0) * 128 * 1024 / 8)
         if estimated_size > 0:
             return best_format
     
@@ -164,6 +167,7 @@ def get_best_format_size(info, formats, formats_list, is_video=True):
     return best_format
 
 def check_and_get_size(url, video_format=None, audio_format=None):
+    logging.warning("Entering check_and_get_size...")
     try:
         cookie_file = get_cookie_file_path()
         ydl_opts = {
@@ -173,60 +177,52 @@ def check_and_get_size(url, video_format=None, audio_format=None):
             'skip_download': True,
             'cookiefile': cookie_file
         }
-        
+        breakpoint()
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            formats = info['formats']
+            warn = ydl.extract_warn(url, download=False)
+            formats = warn['formats']
             total_size = 0
             
             if video_format:
                 if video_format == 'bestvideo':
                     video_formats = [f for f in formats if f.get('vcodec') != 'none' and f.get('acodec') == 'none']
-                    best_video = get_best_format_size(info, formats, video_formats, is_video=True)
+                    best_video = get_best_format_size(warn, formats, video_formats, is_video=True)
                     total_size += best_video.get('filesize') or best_video.get('filesize_approx', 0)
                 else:
-                    format_info = next((f for f in formats if f.get('format_id') == video_format), None)
-                    if format_info:
-                        total_size += format_info.get('filesize') or format_info.get('filesize_approx', 0)
+                    format_warn = next((f for f in formats if f.get('format_id') == video_format), None)
+                    if format_warn:
+                        total_size += format_warn.get('filesize') or format_warn.get('filesize_approx', 0)
 
             if audio_format:
                 if audio_format == 'bestaudio':
                     audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') == 'none']
-                    best_audio = get_best_format_size(info, formats, audio_formats, is_video=False)
+                    best_audio = get_best_format_size(warn, formats, audio_formats, is_video=False)
                     total_size += best_audio.get('filesize') or best_audio.get('filesize_approx', 0)
                 else:
-                    format_info = next((f for f in formats if f.get('format_id') == audio_format), None)
-                    if format_info:
-                        total_size += format_info.get('filesize') or format_info.get('filesize_approx', 0)
+                    format_warn = next((f for f in formats if f.get('format_id') == audio_format), None)
+                    if format_warn:
+                        total_size += format_warn.get('filesize') or format_warn.get('filesize_approx', 0)
             total_size = int(total_size * 1.10)            
             return total_size if total_size > 0 else -1 
     except Exception as e:
         logging.error(f"Error in check_and_get_size: {str(e)}")
         handle_task_error(task_id, f"Error estimating size: {str(e)}")
         return -1 # Indicate error
-    finally:
-        # Clean up temporary cookie file if it was created
-        if cookie_file != 'youtube_cookies.txt' and os.path.exists(cookie_file):
-            try:
-                os.remove(cookie_file)
-                logging.info(f"Cleaned up temporary cookie file: {cookie_file}")
-            except OSError as e:
-                logging.error(f"Error removing temporary cookie file {cookie_file}: {e}")
 
-def get_info(task_id, url):
+def get_warn(task_id, url):
+    logging.warning("Entering get_warn...")
     tasks = load_tasks()
     if not tasks or task_id not in tasks:
-        logging.error(f"Task ID {task_id} not found for get_info.")
+        logging.error(f"Task ID {task_id} not found for get_warn.")
         return
-    cookie_file = None # Initialize
     try:
         tasks[task_id].update(status='processing')
         save_tasks(tasks)
 
         # Define local path for temporary storage
-        local_info_dir = os.path.join(DOWNLOAD_DIR, task_id)
-        local_info_file = os.path.join(local_info_dir, 'info.json')
-        os.makedirs(local_info_dir, exist_ok=True)
+        local_warn_dir = os.path.join(DOWNLOAD_DIR, task_id)
+        local_warn_file = os.path.join(local_warn_dir, 'warn.json')
+        os.makedirs(local_warn_dir, exist_ok=True)
 
         cookie_file = get_cookie_file_path()
         ydl_opts = {
@@ -238,12 +234,12 @@ def get_info(task_id, url):
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            logging.info(f"Extracting info for {url} (Task: {task_id})")
-            info = ydl.extract_info(url, download=False)
+            logging.warn(f"Extracting warn for {url} (Task: {task_id})")
+            warn = ydl.extract_warn(url, download=False)
 
-        logging.info(f"Writing info to temporary file: {local_info_file}")
-        with open(local_info_file, 'w') as f:
-            json.dump(info, f, indent=4)
+        logging.warn(f"Writing warn to temporary file: {local_warn_file}")
+        with open(local_warn_file, 'w') as f:
+            json.dump(warn, f, indent=4)
 
         tasks = load_tasks() # Reload tasks state
         if task_id not in tasks:
@@ -252,51 +248,31 @@ def get_info(task_id, url):
 
         file_path_or_uri = None
         if USE_GCS_DOWNLOADS:
-            logging.info(f"Uploading info file {local_info_file} to GCS for task {task_id}")
-            # Upload the info.json file
-            gcs_uri = upload_to_gcs(local_info_file, task_id)
+            logging.warn(f"Uploading warn file {local_warn_file} to GCS for task {task_id}")
+            # Upload the warn.json file
+            gcs_uri = upload_to_gcs(local_warn_file, task_id)
             if gcs_uri:
                 file_path_or_uri = gcs_uri
                 # upload_to_gcs handles local file deletion on success
             else:
                  # Upload failed, mark task as error
-                 raise Exception(f"Failed to upload info.json to GCS for task {task_id}")
+                 raise Exception(f"Failed to upload warn.json to GCS for task {task_id}")
         else:
             # Local mode: keep local path
-            file_path_or_uri = f'/files/{task_id}/info.json'
-            logging.info(f"Local mode: Info file path set to {file_path_or_uri}")
+            file_path_or_uri = f'/files/{task_id}/warn.json'
+            logging.warn(f"Local mode: warn file path set to {file_path_or_uri}")
 
         tasks[task_id].update(status='completed', file=file_path_or_uri)
         tasks[task_id]['completed_time'] = datetime.now().isoformat()
         save_tasks(tasks)
-        logging.info(f"Task {task_id} completed successfully.")
+        logging.warn(f"Task {task_id} completed successfully.")
 
     except Exception as e:
-        logging.error(f"Error in get_info for task {task_id}: {e}")
+        logging.error(f"Error in get_warn for task {task_id}: {e}")
         handle_task_error(task_id, e)
-    finally:
-        # Clean up temporary cookie file
-        if cookie_file and cookie_file != 'youtube_cookies.txt' and os.path.exists(cookie_file):
-            try:
-                os.remove(cookie_file)
-                logging.info(f"Cleaned up temporary cookie file: {cookie_file}")
-            except OSError as e:
-                logging.error(f"Error removing temporary cookie file {cookie_file}: {e}")
-        # Ensure local dir is removed if GCS upload didn't happen or failed partially
-        # (upload_to_gcs should handle it on success)
-        if not USE_GCS_DOWNLOADS and 'local_info_dir' in locals() and os.path.exists(local_info_dir):
-            # Keep local files if not using GCS
-            pass
-        elif 'local_info_dir' in locals() and os.path.exists(local_info_dir):
-             # If GCS was used but dir still exists (e.g., upload failed), try cleaning
-             try:
-                 if not os.listdir(local_info_dir): # Only remove if empty
-                    shutil.rmtree(local_info_dir)
-                    logging.info(f"Cleaned up potentially orphaned local directory: {local_info_dir}")
-             except Exception as cleanup_e:
-                 logging.error(f"Error during final cleanup of {local_info_dir}: {cleanup_e}")
 
 def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
+    logging.warning("Entering get...")
     tasks = load_tasks()
     if not tasks or task_id not in tasks:
         logging.error(f"Task ID {task_id} not found for get.")
@@ -323,13 +299,13 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         if not os.path.exists(local_download_path):
             # Use exist_ok=True to prevent errors if the directory already exists
             os.makedirs(local_download_path, exist_ok=True) 
-            logging.info(f"Ensured download directory exists: {local_download_path}") # Add log
+            logging.warn(f"Ensured download directory exists: {local_download_path}") # Add log
         else:
             logging.warning(f"Download directory already exists: {local_download_path}") # Add log if exists
 
         cookie_file = get_cookie_file_path()
         # Add logging to verify the cookie file path before use
-        logging.info(f"Using cookie file for task {task_id}: {cookie_file}") 
+        logging.warn(f"Using cookie file for task {task_id}: {cookie_file}") 
         if cookie_file and not os.path.exists(cookie_file):
              logging.warning(f"Cookie file specified but does not exist: {cookie_file}")
 
@@ -354,12 +330,12 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
             ydl_opts['force_keyframes_at_cuts'] = tasks[task_id].get('force_keyframes', False)
         
         # Log the options right before initializing YoutubeDL
-        logging.info(f"Initializing yt-dlp for task {task_id} with options: {ydl_opts}")
+        logging.warn(f"Initializing yt-dlp for task {task_id} with options: {ydl_opts}")
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            logging.info(f"Starting download for {url} (Task: {task_id}) to {local_download_path}")
+            logging.warn(f"Starting download for {url} (Task: {task_id}) to {local_download_path}")
             ydl.download([url])
-            logging.info(f"Local download completed for task {task_id}.")
+            logging.warn(f"Local download completed for task {task_id}.")
 
         tasks = load_tasks() # Reload tasks state
         if task_id not in tasks:
@@ -374,7 +350,7 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
 
         file_path_or_uri = None
         if USE_GCS_DOWNLOADS:
-            logging.info(f"Uploading {local_file_to_upload} to GCS for task {task_id}")
+            logging.warn(f"Uploading {local_file_to_upload} to GCS for task {task_id}")
             # Upload the whole directory content (usually one file)
             gcs_uri = upload_to_gcs(local_download_path, task_id)
             if gcs_uri:
@@ -385,41 +361,19 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         else:
             # Local mode: Construct local path for /files/ endpoint
             file_path_or_uri = f'/files/{task_id}/{downloaded_files[0]}'
-            logging.info(f"Local mode: File path set to {file_path_or_uri}")
+            logging.warn(f"Local mode: File path set to {file_path_or_uri}")
 
         tasks[task_id].update(status='completed', file=file_path_or_uri)
         tasks[task_id]['completed_time'] = datetime.now().isoformat()
         save_tasks(tasks)
-        logging.info(f"Task {task_id} completed successfully.")
+        logging.warn(f"Task {task_id} completed successfully.")
 
     except Exception as e:
         logging.error(f"Error in get for task {task_id}: {e}")
         handle_task_error(task_id, e)
-    finally:
-        # Clean up temporary cookie file
-        if cookie_file and cookie_file != 'youtube_cookies.txt' and os.path.exists(cookie_file):
-            try:
-                os.remove(cookie_file)
-                logging.info(f"Cleaned up temporary cookie file: {cookie_file}")
-            except OSError as e:
-                logging.error(f"Error removing temporary cookie file {cookie_file}: {e}")
-        # Ensure local dir is removed if GCS upload didn't happen or failed partially
-        # (upload_to_gcs should handle it on success)
-        if not USE_GCS_DOWNLOADS and os.path.exists(local_download_path):
-            # Keep local files if not using GCS
-            pass
-        elif os.path.exists(local_download_path):
-             # If GCS was used but dir still exists (e.g., upload failed), try cleaning
-             try:
-                if os.listdir(local_download_path): # Only remove if not empty (upload failed)
-                    logging.warning(f"Local download directory {local_download_path} may contain files due to failed GCS upload.")
-                else:
-                    shutil.rmtree(local_download_path)
-                    logging.info(f"Cleaned up potentially orphaned local directory: {local_download_path}")
-             except Exception as cleanup_e:
-                 logging.error(f"Error during final cleanup of {local_download_path}: {cleanup_e}")
 
 def get_live(task_id, url, type, start, duration, video_format="bestvideo", audio_format="bestaudio"):
+    logging.warning("Entering get_live...")
     tasks = load_tasks()
     if not tasks or task_id not in tasks:
         logging.error(f"Task ID {task_id} not found for get_live.")
@@ -449,15 +403,15 @@ def get_live(task_id, url, type, start, duration, video_format="bestvideo", audi
         ydl_opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_template),
-            'download_ranges': lambda info, *args: [{'start_time': start_time, 'end_time': end_time,}],
+            'download_ranges': lambda warn, *args: [{'start_time': start_time, 'end_time': end_time,}],
             'merge_output_format': 'mp4' if type.lower() == 'video' else None,
             'cookiefile': cookie_file # Use potentially temporary cookie file path
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            logging.info(f"Starting live download for {url} (Task: {task_id}) to {local_download_path}")
+            logging.warn(f"Starting live download for {url} (Task: {task_id}) to {local_download_path}")
             ydl.download([url])
-            logging.info(f"Local live download completed for task {task_id}.")
+            logging.warn(f"Local live download completed for task {task_id}.")
 
         tasks = load_tasks() # Reload tasks state
         if task_id not in tasks:
@@ -472,7 +426,7 @@ def get_live(task_id, url, type, start, duration, video_format="bestvideo", audi
 
         file_path_or_uri = None
         if USE_GCS_DOWNLOADS:
-            logging.info(f"Uploading {local_file_to_upload} to GCS for task {task_id}")
+            logging.warn(f"Uploading {local_file_to_upload} to GCS for task {task_id}")
             gcs_uri = upload_to_gcs(local_download_path, task_id)
             if gcs_uri:
                 file_path_or_uri = gcs_uri
@@ -482,45 +436,26 @@ def get_live(task_id, url, type, start, duration, video_format="bestvideo", audi
         else:
             # Local mode
             file_path_or_uri = f'/files/{task_id}/{downloaded_files[0]}'
-            logging.info(f"Local mode: File path set to {file_path_or_uri}")
+            logging.warn(f"Local mode: File path set to {file_path_or_uri}")
 
         tasks[task_id].update(status='completed', file=file_path_or_uri)
         tasks[task_id]['completed_time'] = datetime.now().isoformat()
         save_tasks(tasks)
-        logging.info(f"Task {task_id} completed successfully.")
+        logging.warn(f"Task {task_id} completed successfully.")
 
     except Exception as e:
         logging.error(f"Error in get_live for task {task_id}: {e}")
         handle_task_error(task_id, e)
-    finally:
-        # Clean up temporary cookie file
-        if cookie_file and cookie_file != 'youtube_cookies.txt' and os.path.exists(cookie_file):
-            try:
-                os.remove(cookie_file)
-                logging.info(f"Cleaned up temporary cookie file: {cookie_file}")
-            except OSError as e:
-                logging.error(f"Error removing temporary cookie file {cookie_file}: {e}")
-        # Ensure local dir is removed if GCS upload didn't happen or failed partially
-        if not USE_GCS_DOWNLOADS and os.path.exists(local_download_path):
-            pass # Keep local files
-        elif os.path.exists(local_download_path):
-             # If GCS was used but dir still exists, try cleaning
-             try:
-                if os.listdir(local_download_path): # Only remove if not empty (upload failed)
-                    logging.warning(f"Local download directory {local_download_path} may contain files due to failed GCS upload.")
-                else:
-                    shutil.rmtree(local_download_path)
-                    logging.info(f"Cleaned up potentially orphaned local directory: {local_download_path}")
-             except Exception as cleanup_e:
-                 logging.error(f"Error during final cleanup of {local_download_path}: {cleanup_e}")
 
 def handle_task_error(task_id, error):
+    logging.warning("Entering handle_task_error...")
     tasks = load_tasks()
     tasks[task_id].update(status='error', error=str(error), completed_time=datetime.now().isoformat())
     save_tasks(tasks)
-    logging.info(f"Error in task {task_id}: {str(error)}")
+    logging.warn(f"Error in task {task_id}: {str(error)}")
 
 def cleanup_task(task_id):
+    logging.warning("Entering cleanup_task...")
     tasks = load_tasks()
     download_path = os.path.join(DOWNLOAD_DIR, task_id)
     if os.path.exists(download_path):
@@ -530,8 +465,9 @@ def cleanup_task(task_id):
         save_tasks(tasks)
 
 def cleanup_orphaned_folders():
+    logging.warning("Entering cleanup_orphaned_folders...")
     """Cleans up orphaned task folders from DOWNLOAD_DIR."""
-    logging.info("Running cleanup for orphaned folders...")
+    logging.warn("Running cleanup for orphaned folders...")
     tasks = load_tasks()
     task_ids = set(tasks.keys())
     if os.path.exists(DOWNLOAD_DIR):
@@ -541,13 +477,14 @@ def cleanup_orphaned_folders():
             if os.path.isdir(item_path) and item not in task_ids:
                  # Add more robust check if task IDs have specific format
                 try:
-                    logging.info(f"Removing orphaned local task folder: {item_path}")
+                    logging.warn(f"Removing orphaned local task folder: {item_path}")
                     shutil.rmtree(item_path)
                 except Exception as e:
                     logging.error(f"Error removing orphaned folder {item_path}: {e}")
-    logging.info("Orphaned folder cleanup finished.")
+    logging.warn("Orphaned folder cleanup finished.")
 
 def cleanup_processing_tasks():
+    logging.warning("Entering cleanup_processing_tasks...")
     tasks = load_tasks()
     for task_id, task in list(tasks.items()):
         if task['status'] == 'processing':
@@ -557,6 +494,7 @@ def cleanup_processing_tasks():
     save_tasks(tasks)
 
 def process_tasks():
+    logging.warning("Entering process_tasks...")
     while True:
         tasks = load_tasks()
         current_time = datetime.now()
@@ -571,8 +509,8 @@ def process_tasks():
                 elif task['task_type'] == 'get_audio':
                     # Audio tasks primarily need audio_format, video_format can default
                     executor.submit(get, task_id, task['url'], 'audio', 'bestvideo', audio_format)
-                elif task['task_type'] == 'get_info':
-                    executor.submit(get_info, task_id, task['url'])
+                elif task['task_type'] == 'get_warn':
+                    executor.submit(get_warn, task_id, task['url'])
                 elif task['task_type'] == 'get_live_video':
                     executor.submit(get_live, task_id, task['url'], 'video', task['start'], task['duration'], video_format, audio_format)
                 elif task['task_type'] == 'get_live_audio':
@@ -593,6 +531,12 @@ def process_tasks():
         if current_time.minute % 5 == 0 and current_time.second == 0:
             cleanup_orphaned_folders()
         time.sleep(1)
+
+executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
+
+# Ensure local download dir exists for temporary storage before GCS upload
+if not os.path.exists(DOWNLOAD_DIR):
+    os.makedirs(DOWNLOAD_DIR)
 
 cleanup_processing_tasks()
 cleanup_orphaned_folders()
