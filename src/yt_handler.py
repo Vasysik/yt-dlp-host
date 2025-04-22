@@ -43,8 +43,8 @@ def get_cookie_file_path():
     """Fetches cookies from Secret Manager if configured, writes to a temp file, and returns the path."""
     logging.info("Attempting to determine cookie file path...")
     if secret_manager_client and COOKIE_SECRET_VERSION:
+        logging.info(f"Secret Manager configured. Attempting to fetch secret: {COOKIE_SECRET_VERSION}")
         try:
-            logging.info(f"Attempting to fetch cookie secret: {COOKIE_SECRET_VERSION}")
             response = secret_manager_client.access_secret_version(name=COOKIE_SECRET_VERSION)
             cookie_data = response.payload.data.decode("UTF-8")
 
@@ -53,13 +53,14 @@ def get_cookie_file_path():
             # For Cloud Run, /tmp is memory-backed and cleared on instance termination.
             with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', prefix='cookies_') as temp_file:
                 temp_file.write(cookie_data)
-                logging.info(f"Cookies written to temporary file: {temp_file.name}")
+                logging.info(f"Secret Manager Success: Cookies written to temporary file: {temp_file.name}")
                 return temp_file.name
         except Exception as e:
-            logging.error(f"Failed to fetch/write cookies from Secret Manager: {e}")
+            logging.error(f"Secret Manager Error: Failed to fetch/write cookies: {e}. Falling back.")
             # Fallback to default local path if secret access fails
             return 'youtube_cookies.txt'
     else:
+        logging.info("Secret Manager not configured or secret version not provided. Using default path.")
         # Use default local path if Secret Manager is not configured
         return 'youtube_cookies.txt'
 
@@ -235,7 +236,7 @@ def get_info(task_id, url):
             'skip_download': True,
             'cookiefile': cookie_file
         }
-
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             logging.info(f"Extracting info for {url} (Task: {task_id})")
             info = ydl.extract_info(url, download=False)
@@ -352,6 +353,9 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
             ydl_opts['download_ranges'] = download_range_func(None, [(start_seconds, end_seconds)])
             ydl_opts['force_keyframes_at_cuts'] = tasks[task_id].get('force_keyframes', False)
         
+        # Log the options right before initializing YoutubeDL
+        logging.info(f"Initializing yt-dlp for task {task_id} with options: {ydl_opts}")
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             logging.info(f"Starting download for {url} (Task: {task_id}) to {local_download_path}")
             ydl.download([url])
