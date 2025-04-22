@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 from src.json_utils import load_tasks, save_tasks, load_keys
 from config import DOWNLOAD_DIR
 import src.yt_handler as yt_handler
@@ -9,6 +10,7 @@ import os
 import json
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}}) # Allow all origins
 app.json.sort_keys = False
 
 def generate_random_id(length=16):
