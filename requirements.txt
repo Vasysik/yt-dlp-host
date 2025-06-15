@@ -1,6 +1,2 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-aiosqlite
-yt-dlp
-pydantic-settings
+Flask==3.0.3
+yt-dlp==2024.8.6
