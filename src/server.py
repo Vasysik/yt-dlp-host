@@ -288,6 +288,14 @@ def check_permissions():
         return jsonify({'message': 'Permissions granted'}), 200
     return jsonify({'message': 'Insufficient permissions'}), 403
 
+@app.route('/')
+def index():
+    return jsonify({'message': 'yt-dlp-host API is running', 'status': 'ok'})
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'healthy'})
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
