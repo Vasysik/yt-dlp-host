@@ -10,4 +10,4 @@ RUN apt update && \
 
 COPY . .
 
-CMD ["flask", "run"]
+CMD ["python", "src/server.py"]
