@@ -289,4 +289,5 @@ def check_permissions():
     return jsonify({'message': 'Insufficient permissions'}), 403
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
