@@ -13,11 +13,12 @@ from yt_dlp.utils import download_range_func
 from src.storage import Storage
 from src.auth import memory_manager
 from src.models import TaskStatus, TaskType
-from config import storage, task, memory
+from config import storage, memory
+from config import task as task_config
 
 class YTDownloader:
     def __init__(self):
-        self.executor = ThreadPoolExecutor(max_workers=task.MAX_WORKERS)
+        self.executor = ThreadPoolExecutor(max_workers=task_config.MAX_WORKERS)
         self._ensure_download_dir()
     
     def _ensure_download_dir(self):
@@ -194,14 +195,14 @@ class YTDownloader:
             tasks = Storage.load_tasks()
             current_time = datetime.now()
             
-            for task_id, task in list(tasks.items()):
-                if task['status'] == TaskStatus.WAITING.value:
-                    self._submit_task(task_id, task)
+            for task_id, task_data in list(tasks.items()):
+                if task_data['status'] == TaskStatus.WAITING.value:
+                    self._submit_task(task_id, task_data)
                 
-                elif task['status'] in [TaskStatus.COMPLETED.value, TaskStatus.ERROR.value]:
-                    if 'completed_time' in task:
-                        completed = datetime.fromisoformat(task['completed_time'])
-                        if current_time - completed > timedelta(minutes=task.CLEANUP_TIME_MINUTES):
+                elif task_data['status'] in [TaskStatus.COMPLETED.value, TaskStatus.ERROR.value]:
+                    if 'completed_time' in task_data:
+                        completed = datetime.fromisoformat(task_data['completed_time'])
+                        if current_time - completed > timedelta(minutes=task_config.CLEANUP_TIME_MINUTES):
                             self.cleanup_task(task_id)
             
             # Cleanup orphaned folders every 5 minutes
@@ -210,8 +211,8 @@ class YTDownloader:
             
             time.sleep(1)
     
-    def _submit_task(self, task_id: str, task: dict):
-        task_type = task['task_type']
+    def _submit_task(self, task_id: str, task_data: dict):
+        task_type = task_data['task_type']
         
         if task_type == TaskType.GET_INFO.value:
             self.executor.submit(self.download_info, task_id)
@@ -230,11 +231,11 @@ class YTDownloader:
     def initialize(self):
         # Fix interrupted tasks
         tasks = Storage.load_tasks()
-        for task_id, task in tasks.items():
-            if task['status'] == TaskStatus.PROCESSING.value:
-                task['status'] = TaskStatus.ERROR.value
-                task['error'] = 'Task was interrupted'
-                task['completed_time'] = datetime.now().isoformat()
+        for task_id, task_data in tasks.items():
+            if task_data['status'] == TaskStatus.PROCESSING.value:
+                task_data['status'] = TaskStatus.ERROR.value
+                task_data['error'] = 'Task was interrupted'
+                task_data['completed_time'] = datetime.now().isoformat()
         Storage.save_tasks(tasks)
         
         # Start processing thread
