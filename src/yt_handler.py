@@ -42,10 +42,15 @@ class YTDownloader:
         )
         print(f"Error in task {task_id}: {error}")
     
-    def estimate_size(self, url: str, video_format: Optional[str] = None, 
-                     audio_format: Optional[str] = None) -> int:
+    def estimate_size(self, url: str, video_format: Optional[str] = None, audio_format: Optional[str] = None) -> int:
         try:
-            with yt_dlp.YoutubeDL({'quiet': True, 'no_warnings': True}) as ydl:
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': False,
+                'skip_download': True
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 
                 total_size = 0
