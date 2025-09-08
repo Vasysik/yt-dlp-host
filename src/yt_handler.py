@@ -162,6 +162,7 @@ class YTDownloader:
     def _build_ydl_options(self, task: dict, download_path: str) -> dict:
         is_video = task['task_type'] in ['get_video', 'get_live_video']
         is_live = 'live' in task['task_type']
+        output_format = task.get('output_format')
         
         if is_video:
             format_option = f"{task.get('video_format', 'bestvideo')}+{task.get('audio_format', 'bestaudio')}/best"
@@ -172,9 +173,22 @@ class YTDownloader:
         
         opts = {
             'format': format_option,
-            'outtmpl': os.path.join(download_path, output_name),
-            'merge_output_format': 'mp4' if is_video else None
+            'outtmpl': os.path.join(download_path, output_name)
         }
+        
+        # Handle output format
+        if output_format:
+            if is_video:
+                opts['recode_video'] = output_format
+            else:
+                opts['postprocessors'] = [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': output_format,
+                    'preferredquality': '0'
+                }]
+        else:
+            if is_video:
+                opts['merge_output_format'] = 'mp4'
         
         # Handle time ranges
         if is_live and task.get('duration'):

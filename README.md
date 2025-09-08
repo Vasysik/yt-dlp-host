@@ -13,8 +13,8 @@ This API offers a range of endpoints for downloading YouTube videos, retrieving 
 5. [Endpoints](#endpoints)
    - [Get Video (`/get_video`)](#get-video-get_video)
    - [Get Audio (`/get_audio`)](#get-audio-get_audio)
-   - [Get Live Video (`/get_video`)](#get-live-video-get_live_video)
-   - [Get Live Audio (`/get_audio`)](#get-live-audio-get_live_audio)
+   - [Get Live Video (`/get_live_video`)](#get-live-video-get_live_video)
+   - [Get Live Audio (`/get_live_audio`)](#get-live-audio-get_live_audio)
    - [Get Info (`/get_info`)](#get-info-get_info)
    - [Create API Key (`/create_key`)](#create-api-key-create_key)
    - [Delete API Key (`/delete_key/<name>`)](#delete-api-key-delete_keyname)
@@ -31,8 +31,8 @@ To run the server, follow these steps:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/youtube-downloader-api.git
-   cd youtube-downloader-api
+   git clone https://github.com/Vasysik/yt-dlp-host.git
+   cd yt-dlp-host
    ```
 
 2. Build and run the Docker container:
@@ -49,19 +49,26 @@ The server's configuration is defined in the `config.py` file. Here are the defa
 - `DOWNLOAD_DIR`: The directory where downloaded files will be stored. Default is `'/app/downloads'`.
 - `TASKS_FILE`: The path to the JSON file that stores task information. Default is `'jsons/tasks.json'`.
 - `KEYS_FILE`: The path to the JSON file that stores API keys and their permissions. Default is `'jsons/api_keys.json'`.
-- `TASK_CLEANUP_TIME`: The time (in minutes) after which completed tasks will be removed. Default is `10`.
-- `REQUEST_LIMIT`: The maximum number of requests allowed within the `TASK_CLEANUP_TIME` period. Default is `20`.
+- `CLEANUP_TIME_MINUTES`: The time (in minutes) after which completed tasks will be removed. Default is `10`.
+- `REQUEST_LIMIT`: The maximum number of requests allowed within the `CLEANUP_TIME_MINUTES` period. Default is `60`.
 - `MAX_WORKERS`: The maximum number of concurrent workers for processing tasks. Default is `4`.
+- `DEFAULT_QUOTA_GB`: Default memory quota for new API keys in GB. Default is `5`.
+- `QUOTA_RATE_MINUTES`: Time window for quota calculation in minutes. Default is `10`.
+- `AVAILABLE_BYTES`: Total available memory for all users in bytes. Default is `20GB`.
 
 ## Authentication
 
 All requests to the API must include an API key in the `X-API-Key` header. To obtain an API key, contact the API administrator or use the `/create_key` endpoint if you have create_key permissions.
 
+## Rate Limiting
+
+The API implements rate limiting to prevent abuse. Each API key is limited to `60` requests within a `10` minute window. Additionally, memory quotas are enforced to prevent excessive storage usage.
+
 ## Endpoints
 
 ### Get Video (`/get_video`)
 
-Initiates a video get_video task from the specified URL.
+Initiates a video download task from the specified URL.
 
 - **Method:** POST
 - **URL:** `/get_video`
@@ -74,8 +81,9 @@ Initiates a video get_video task from the specified URL.
       "url": "https://youtu.be/1FPdtR_5KFo",
       "video_format": "bestvideo[height<=1080]",
       "audio_format": "bestaudio[abr<=129]",
+      "output_format": "mp4",
       "start_time": "00:00:30",
-      "end_time": "00:00:60",
+      "end_time": "00:01:00",
       "force_keyframes": false
   }
   ```
@@ -83,9 +91,10 @@ Initiates a video get_video task from the specified URL.
   - `url` (required): The URL of the video to be downloaded.
   - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
-  - `start_time` (optional): Starting point for video fragment in seconds
-  - `end_time` (optional): Ending point for video fragment in seconds
-  - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false
+  - `output_format` (optional): The output container format (mp4, mkv, webm, mov, avi, etc.). Default is "mp4".
+  - `start_time` (optional): Starting point for video fragment in HH:MM:SS format.
+  - `end_time` (optional): Ending point for video fragment in HH:MM:SS format.
+  - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false.
 - **Permissions:** Requires the `get_video` permission.
 - **Response:**
   ```json
@@ -97,7 +106,7 @@ Initiates a video get_video task from the specified URL.
 
 ### Get Audio (`/get_audio`)
 
-Initiates a audio get_audio task from the specified URL.
+Initiates an audio download task from the specified URL.
 
 - **Method:** POST
 - **URL:** `/get_audio`
@@ -109,17 +118,19 @@ Initiates a audio get_audio task from the specified URL.
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
       "audio_format": "bestaudio[abr<=129]",
+      "output_format": "mp3",
       "start_time": "00:00:30",
-      "end_time": "00:00:60",
+      "end_time": "00:01:00",
       "force_keyframes": false
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the audio to be downloaded.
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
-  - `start_time` (optional): Starting point for video fragment in seconds
-  - `end_time` (optional): Ending point for video fragment in seconds
-  - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false
+  - `output_format` (optional): The output audio format (mp3, m4a, opus, flac, wav, etc.). Default is original format.
+  - `start_time` (optional): Starting point for audio fragment in HH:MM:SS format.
+  - `end_time` (optional): Ending point for audio fragment in HH:MM:SS format.
+  - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false.
 - **Permissions:** Requires the `get_audio` permission.
 - **Response:**
   ```json
@@ -131,7 +142,7 @@ Initiates a audio get_audio task from the specified URL.
 
 ### Get Live Video (`/get_live_video`)
 
-Initiates a video get_live_video task from the specified URL.
+Initiates a live video download task from the specified URL.
 
 - **Method:** POST
 - **URL:** `/get_live_video`
@@ -145,15 +156,17 @@ Initiates a video get_live_video task from the specified URL.
       "start": 0,
       "duration": 300,
       "video_format": "bestvideo[height<=1080]",
-      "audio_format": "bestaudio[abr<=129]"
+      "audio_format": "bestaudio[abr<=129]",
+      "output_format": "mp4"
   }
   ```
 - **Parameters:**
   - `url` (required): The URL of the live stream to be downloaded.
-  - `start` (optional): The starting point in seconds for the stream recording.
+  - `start` (optional): The starting point in seconds for the stream recording. Default is 0.
   - `duration` (required): The length of the recording in seconds from the start point.
   - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
+  - `output_format` (optional): The output container format (mp4, mkv, webm, etc.). Default is "mp4".
 - **Permissions:** Requires the `get_live_video` permission.
 - **Response:**
   ```json
@@ -165,7 +178,7 @@ Initiates a video get_live_video task from the specified URL.
 
 ### Get Live Audio (`/get_live_audio`)
 
-Initiates a audio get_live_audio task from the specified URL.
+Initiates a live audio download task from the specified URL.
 
 - **Method:** POST
 - **URL:** `/get_live_audio`
@@ -177,6 +190,7 @@ Initiates a audio get_live_audio task from the specified URL.
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
       "audio_format": "bestaudio[abr<=129]",
+      "output_format": "mp3",
       "start": 0,
       "duration": 300
   }
@@ -184,7 +198,8 @@ Initiates a audio get_live_audio task from the specified URL.
 - **Parameters:**
   - `url` (required): The URL of the live stream to be downloaded.
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
-  - `start` (optional): The starting point in seconds for the stream recording.
+  - `output_format` (optional): The output audio format (mp3, m4a, opus, flac, wav, etc.). Default is original format.
+  - `start` (optional): The starting point in seconds for the stream recording. Default is 0.
   - `duration` (required): The length of the recording in seconds from the start point.
 - **Permissions:** Requires the `get_live_audio` permission.
 - **Response:**
@@ -246,7 +261,7 @@ Creates a new API key with the specified permissions.
   {
       "message": "API key created successfully",
       "key": "new_api_key_here",
-      "name": "name"
+      "name": "user_key"
   }
   ```
 
@@ -262,7 +277,7 @@ Deletes an existing API key by its name.
 - **Response:**
   ```json
   {
-      "name": "name", 
+      "name": "user_key", 
       "message": "API key deleted successfully"
   }
   ```
@@ -279,38 +294,68 @@ Retrieves a list of all existing API keys.
 - **Response:**
   ```json
   {
-      "admin_key": {
+      "admin": {
           "key": "admin_api_key_here",
-          "name": "name", 
-          "permissions": ["create_key", "delete_key", "get_key", "get_keys", "get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"]
+          "permissions": ["create_key", "delete_key", "get_key", "get_keys", "get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"],
+          "memory_quota": 5368709120,
+          "memory_usage": [],
+          "last_access": "2024-01-01T12:00:00"
       },
       "user_key": {
           "key": "user_api_key_here",
-          "name": "name", 
-          "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"]
+          "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"],
+          "memory_quota": 5368709120,
+          "memory_usage": [],
+          "last_access": "2024-01-01T12:00:00"
       }
   }
   ```
 
-  ### Get API Key (`/get_key/<name>`)
+### Get API Key (`/get_key/<name>`)
 
-  Gets an existing API key by its name.
+Gets an existing API key by its name.
 
-  - **Method:** DELETE
-  - **URL:** `/get_key/<name>`
-  - **Headers:**
-    - `X-API-Key`: Your admin API key
-  - **Permissions:** Requires the `get_key` permission.
-  - **Response:**
+- **Method:** GET
+- **URL:** `/get_key/<name>`
+- **Headers:**
+  - `X-API-Key`: Your admin API key
+- **Permissions:** Requires the `get_key` permission.
+- **Response:**
+  ```json
+  {
+      "name": "user_key", 
+      "key": "user_api_key_here"
+  }
+  ```
+
+### Check Permissions (`/check_permissions`)
+
+Checks if the current API key has the specified permissions.
+
+- **Method:** POST
+- **URL:** `/check_permissions`
+- **Headers:**
+  - `X-API-Key`: Your API key
+  - `Content-Type`: application/json
+- **Body:**
+  ```json
+  {
+      "permissions": ["get_video", "get_audio"]
+  }
+  ```
+- **Response:**
+  - Success (200):
     ```json
     {
-      "message": "API key get successfully", 
-      "name": "name", 
-      "key": "user_api_key_here"
+        "message": "Permissions granted"
     }
     ```
-
-  ### List API Keys (`/get_keys`)
+  - Insufficient permissions (403):
+    ```json
+    {
+        "message": "Insufficient permissions"
+    }
+    ```
 
 ### Get Task Status (`/status/<task_id>`)
 
@@ -324,11 +369,14 @@ Retrieves the status of a specific task by its ID.
 - **Response:**
   ```json
   {
+      "key_name": "user_key",
       "status": "completed",
       "task_type": "get_video",
       "url": "https://youtu.be/1FPdtR_5KFo",
       "video_format": "bestvideo[height<=1080]",
       "audio_format": "bestaudio[abr<=129]",
+      "output_format": "mp4",
+      "completed_time": "2024-01-01T12:00:00",
       "file": "/files/abcdefgh12345678/video.mp4"
   }
   ```
@@ -340,13 +388,14 @@ Retrieves a file from the server.
 - **Method:** GET
 - **URL:** `/files/<path:filename>`
 - **Query Parameters:**
-  - Any parameter matching keys in the `info.json` file
-  - `qualities`: Returns a structured list of available video and audio qualities formats
+  - `raw` (optional): If set to "true", forces download of the file.
+  - Any parameter matching keys in the `info.json` file (for info.json files only).
+  - `qualities`: Returns a structured list of available video and audio qualities formats (for info.json files only).
 - **Response:**
-  - For regular files: The file content
+  - For regular files: The file content with appropriate headers.
   - For `info.json` files:
-    - If no query parameters: Full content of the `info.json` file
-    - If query parameters present: Filtered data based on the parameters
+    - If no query parameters: Full content of the `info.json` file.
+    - If query parameters present: Filtered data based on the parameters.
     - For `qualities` parameter:
       ```json
       {
@@ -401,22 +450,22 @@ Example error response:
 ```
 
 Common error codes:
-- 400: Bad Request
-- 401: Unauthorized (Invalid or missing API key)
-- 403: Forbidden (Insufficient permissions)
-- 404: Not Found
-- 429: Too Many Requests (Rate limit exceeded)
-- 500: Internal Server Error
+- 400: Bad Request - Invalid request parameters
+- 401: Unauthorized - Invalid or missing API key
+- 403: Forbidden - Insufficient permissions
+- 404: Not Found - Resource not found
+- 429: Too Many Requests - Rate limit exceeded
+- 500: Internal Server Error - Server-side error
 
 ## Examples
 
-### Getting a video
+### Getting a video in MP4 format
 
 ```python
 import requests
 
 api_key = "your_api_key_here"
-base_url = "http://api.example.com"
+base_url = "http://localhost:5000"
 
 headers = {
     "X-API-Key": api_key,
@@ -426,30 +475,155 @@ headers = {
 data = {
     "url": "https://youtu.be/1FPdtR_5KFo",
     "video_format": "bestvideo[height<=1080]",
-    "audio_format": "bestaudio[abr<=129]"
+    "audio_format": "bestaudio[abr<=129]",
+    "output_format": "mp4"
 }
 
 response = requests.post(f"{base_url}/get_video", json=data, headers=headers)
 print(response.json())
 ```
 
-### Checking task status
+### Getting audio in MP3 format
 
 ```python
 import requests
 
 api_key = "your_api_key_here"
-base_url = "http://api.example.com"
+base_url = "http://localhost:5000"
+
+headers = {
+    "X-API-Key": api_key,
+    "Content-Type": "application/json"
+}
+
+data = {
+    "url": "https://youtu.be/1FPdtR_5KFo",
+    "audio_format": "bestaudio",
+    "output_format": "mp3"
+}
+
+response = requests.post(f"{base_url}/get_audio", json=data, headers=headers)
+print(response.json())
+```
+
+### Getting a video fragment
+
+```python
+import requests
+
+api_key = "your_api_key_here"
+base_url = "http://localhost:5000"
+
+headers = {
+    "X-API-Key": api_key,
+    "Content-Type": "application/json"
+}
+
+data = {
+    "url": "https://youtu.be/1FPdtR_5KFo",
+    "video_format": "bestvideo[height<=720]",
+    "audio_format": "bestaudio",
+    "output_format": "webm",
+    "start_time": "00:00:30",
+    "end_time": "00:01:30",
+    "force_keyframes": True
+}
+
+response = requests.post(f"{base_url}/get_video", json=data, headers=headers)
+print(response.json())
+```
+
+### Checking task status and downloading the file
+
+```python
+import requests
+import time
+
+api_key = "your_api_key_here"
+base_url = "http://localhost:5000"
 task_id = "abcdefgh12345678"
 
 headers = {
     "X-API-Key": api_key
 }
 
-response = requests.get(f"{base_url}/status/{task_id}", headers=headers)
-print(response.json())
+# Check status
+while True:
+    response = requests.get(f"{base_url}/status/{task_id}", headers=headers)
+    status_data = response.json()
+    
+    if status_data['status'] == 'completed':
+        file_url = base_url + status_data['file']
+        # Download the file
+        file_response = requests.get(file_url, headers=headers)
+        with open('downloaded_video.mp4', 'wb') as f:
+            f.write(file_response.content)
+        print("Download completed!")
+        break
+    elif status_data['status'] == 'error':
+        print(f"Error: {status_data.get('error', 'Unknown error')}")
+        break
+    else:
+        print(f"Status: {status_data['status']}")
+        time.sleep(2)
 ```
+
+### Getting video information
+
+```python
+import requests
+
+api_key = "your_api_key_here"
+base_url = "http://localhost:5000"
+
+headers = {
+    "X-API-Key": api_key,
+    "Content-Type": "application/json"
+}
+
+# Start info task
+data = {"url": "https://youtu.be/1FPdtR_5KFo"}
+response = requests.post(f"{base_url}/get_info", json=data, headers=headers)
+task_id = response.json()['task_id']
+
+# Wait for completion and get info
+time.sleep(2)
+status_response = requests.get(f"{base_url}/status/{task_id}", headers=headers)
+if status_response.json()['status'] == 'completed':
+    info_url = base_url + status_response.json()['file']
+    
+    # Get full info
+    info = requests.get(info_url, headers=headers).json()
+    
+    # Get only qualities
+    qualities = requests.get(f"{info_url}?qualities", headers=headers).json()
+    print(qualities)
+```
+
+## Supported Output Formats
+
+### Video Formats
+- **mp4** - MPEG-4 Part 14 (recommended)
+- **mkv** - Matroska
+- **webm** - WebM
+- **avi** - Audio Video Interleave
+- **mov** - QuickTime File Format
+- **flv** - Flash Video
+- **3gp** - 3GPP multimedia
+
+### Audio Formats
+- **mp3** - MPEG Audio Layer III
+- **m4a** - MPEG-4 Audio
+- **opus** - Opus Audio
+- **flac** - Free Lossless Audio Codec
+- **wav** - Waveform Audio File Format
+- **aac** - Advanced Audio Coding
+- **ogg** - Ogg Vorbis
 
 ## Contributing
 
-Contributions to yt-dlp-host are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue on the GitHub repository. Pull requests are also encouraged.
+Contributions to yt-dlp-host are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue on the [GitHub repository](https://github.com/Vasysik/yt-dlp-host). Pull requests are also encouraged.
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
