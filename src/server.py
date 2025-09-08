@@ -97,14 +97,19 @@ def handle_info_file(file_path: str):
         data = json.load(f)
     
     params = request.args
-    if not params:
+    if not params: 
         return jsonify(data)
     
+    result = {}
     if 'qualities' in params:
-        return jsonify({'qualities': extract_qualities(data)})
+        result['qualities'] = extract_qualities(data)
+    for key in params:
+        if key != 'qualities' and key in data:
+            result[key] = data[key]
     
-    filtered = {k: data[k] for k in params if k in data}
-    return jsonify(filtered) if filtered else jsonify({"error": "No matching parameters"}), 404
+    if result:
+        return jsonify(result)
+    return jsonify({"error": "No matching parameters"}), 404
 
 def extract_qualities(data: dict) -> dict:
     qualities = {"audio": {}, "video": {}}
