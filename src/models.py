@@ -29,6 +29,7 @@ class Task:
     force_keyframes: bool = False
     start: Optional[int] = 0
     duration: Optional[int] = None
+    output_format: Optional[str] = None
     completed_time: Optional[str] = None
     error: Optional[str] = None
     file: Optional[str] = None
@@ -43,7 +44,7 @@ class Task:
         
         optional_fields = ['video_format', 'audio_format', 'start_time', 
                           'end_time', 'force_keyframes', 'start', 'duration',
-                          'completed_time', 'error', 'file']
+                          'output_format', 'completed_time', 'error', 'file']
         
         for field_name in optional_fields:
             value = getattr(self, field_name, None)
