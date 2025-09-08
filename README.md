@@ -74,8 +74,8 @@ Initiates a video get_video task from the specified URL.
       "url": "https://youtu.be/1FPdtR_5KFo",
       "video_format": "bestvideo[height<=1080]",
       "audio_format": "bestaudio[abr<=129]",
-      "start_time": 30,
-      "end_time": 60,
+      "start_time": "00:00:30",
+      "end_time": "00:00:60",
       "force_keyframes": false
   }
   ```
@@ -109,8 +109,8 @@ Initiates a audio get_audio task from the specified URL.
   {
       "url": "https://youtu.be/1FPdtR_5KFo",
       "audio_format": "bestaudio[abr<=129]",
-      "start_time": 30,
-      "end_time": 60,
+      "start_time": "00:00:30",
+      "end_time": "00:00:60",
       "force_keyframes": false
   }
   ```
