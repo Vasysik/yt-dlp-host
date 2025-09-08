@@ -173,22 +173,9 @@ class YTDownloader:
         
         opts = {
             'format': format_option,
-            'outtmpl': os.path.join(download_path, output_name)
+            'outtmpl': os.path.join(download_path, output_name),
+            'merge_output_format': output_format
         }
-        
-        # Handle output format
-        if output_format:
-            if is_video:
-                opts['recode_video'] = output_format
-            else:
-                opts['postprocessors'] = [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': output_format,
-                    'preferredquality': '0'
-                }]
-        else:
-            if is_video:
-                opts['merge_output_format'] = 'mp4'
         
         # Handle time ranges
         if is_live and task.get('duration'):
