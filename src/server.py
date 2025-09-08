@@ -9,6 +9,8 @@ from src.auth import auth_manager, memory_manager, require_permission, AuthManag
 from src.models import Task, TaskStatus, TaskType
 from config import storage
 
+from src import yt_handler
+
 app = Flask(__name__)
 app.json.sort_keys = False
 
