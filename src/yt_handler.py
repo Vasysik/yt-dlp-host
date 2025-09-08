@@ -84,7 +84,14 @@ class YTDownloader:
             download_path = self._get_task_dir(task_id)
             os.makedirs(download_path, exist_ok=True)
             
-            with yt_dlp.YoutubeDL({'quiet': True, 'no_warnings': True}) as ydl:
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': True,
+                'skip_download': True
+            }
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(task['url'], download=False)
             
             info_file = os.path.join(download_path, 'info.json')
