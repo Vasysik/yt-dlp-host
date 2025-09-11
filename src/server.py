@@ -125,6 +125,7 @@ def extract_qualities(data: dict) -> dict:
                 "abr": int(fmt['abr']),
                 "acodec": fmt['acodec'],
                 "audio_channels": int(fmt.get('audio_channels', 0)),
+                "language": fmt['language'],
                 "filesize": int(fmt.get('filesize') or fmt.get('filesize_approx') or 0)
             }
         
