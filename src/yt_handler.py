@@ -147,6 +147,10 @@ class YTDownloader:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([task['url']])
             
+            # Handle GIF conversion manually if needed
+            if task.get('output_format', '').lower() == 'gif':
+                self._convert_to_gif(download_path, task['task_type'])
+            
             # Update task
             files = os.listdir(download_path)
             if files:
@@ -158,6 +162,32 @@ class YTDownloader:
                 )
         except Exception as e:
             self._handle_error(task_id, e)
+    
+    def _convert_to_gif(self, download_path: str, task_type: str):
+        import subprocess
+        
+        is_live = 'live' in task_type
+        
+        for file in os.listdir(download_path):
+            if file.endswith(('.mp4', '.mkv', '.webm', '.avi', '.mov')):
+                input_file = os.path.join(download_path, file)
+                output_file = os.path.join(download_path, 'live_video.gif' if is_live else 'video.gif')
+                
+                cmd = [
+                    'ffmpeg', '-i', input_file,
+                    '-vf', 'fps=24,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse',
+                    '-loop', '0',
+                    output_file,
+                    '-y'
+                ]
+                
+                try:
+                    subprocess.run(cmd, check=True, capture_output=True, text=True)
+                    # Remove original file after successful conversion
+                    os.remove(input_file)
+                except subprocess.CalledProcessError as e:
+                    raise Exception(f"Failed to convert to GIF: {e.stderr}")
+                break
     
     def _build_ydl_options(self, task: dict, download_path: str) -> dict:
         is_video = task['task_type'] in ['get_video', 'get_live_video']
@@ -174,8 +204,14 @@ class YTDownloader:
         opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_name),
-            'merge_output_format': output_format
         }
+        
+        # Handle output format (but not GIF - we'll do that manually)
+        if output_format and output_format.lower() != 'gif':
+            opts['merge_output_format'] = output_format
+        elif output_format and output_format.lower() == 'gif':
+            # Download as mp4 first, then convert
+            opts['merge_output_format'] = 'mp4'
         
         # Handle time ranges
         if is_live and task.get('duration'):
@@ -192,9 +228,38 @@ class YTDownloader:
         
         return opts
     
-    def _time_to_seconds(self, time_str: str) -> float:
-        h, m, s = map(float, time_str.split(':'))
-        return h * 3600 + m * 60 + s
+    def _time_to_seconds(self, ts) -> float:
+        if ts is None:
+            return 0.0
+        
+        if isinstance(ts, (int, float)):
+            return float(ts)
+
+        ts_str = str(ts)
+        
+        if ':' not in ts_str:
+            try:
+                return float(ts_str)
+            except ValueError:
+                return 0.0
+        
+        # Time format string
+        parts = ts_str.split(':')
+        try:
+            # Support formats: "SS", "MM:SS", "HH:MM:SS"
+            if len(parts) == 1:
+                return float(parts[0])
+            elif len(parts) == 2:
+                m, s = map(float, parts)
+                return m * 60 + s
+            elif len(parts) == 3:
+                h, m, s = map(float, parts)
+                return h * 3600 + m * 60 + s
+            else:
+                # Invalid format, return 0
+                return 0.0
+        except (ValueError, TypeError):
+            return 0.0
     
     def cleanup_task(self, task_id: str):
         task_dir = self._get_task_dir(task_id)

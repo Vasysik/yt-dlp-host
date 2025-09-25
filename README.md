@@ -91,9 +91,9 @@ Initiates a video download task from the specified URL.
   - `url` (required): The URL of the video to be downloaded.
   - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
-  - `output_format` (optional): The output container format (mp4, mkv, webm, mov, avi, etc.). Default is "mp4".
-  - `start_time` (optional): Starting point for video fragment in HH:MM:SS format.
-  - `end_time` (optional): Ending point for video fragment in HH:MM:SS format.
+  - `output_format` (optional): The output container format (mp4, mkv, webm, mov, avi, gif, etc.). Default is "mp4".
+  - `start_time` (optional): Starting point for video fragment in HH:MM:SS format or seconds as number.
+  - `end_time` (optional): Ending point for video fragment in HH:MM:SS format or seconds as number.
   - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false.
 - **Permissions:** Requires the `get_video` permission.
 - **Response:**
@@ -128,8 +128,8 @@ Initiates an audio download task from the specified URL.
   - `url` (required): The URL of the audio to be downloaded.
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
   - `output_format` (optional): The output audio format (mp3, m4a, opus, flac, wav, etc.). Default is original format.
-  - `start_time` (optional): Starting point for audio fragment in HH:MM:SS format.
-  - `end_time` (optional): Ending point for audio fragment in HH:MM:SS format.
+  - `start_time` (optional): Starting point for audio fragment in HH:MM:SS format or seconds as number.
+  - `end_time` (optional): Ending point for audio fragment in HH:MM:SS format or seconds as number.
   - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false.
 - **Permissions:** Requires the `get_audio` permission.
 - **Response:**
@@ -533,6 +533,31 @@ response = requests.post(f"{base_url}/get_video", json=data, headers=headers)
 print(response.json())
 ```
 
+### Getting a GIF from video
+
+```python
+import requests
+
+api_key = "your_api_key_here"
+base_url = "http://localhost:5000"
+
+headers = {
+    "X-API-Key": api_key,
+    "Content-Type": "application/json"
+}
+
+data = {
+    "url": "https://youtu.be/1FPdtR_5KFo",
+    "video_format": "bestvideo[height<=480]",
+    "output_format": "gif",
+    "start_time": 30,  # Can use number of seconds
+    "end_time": 35
+}
+
+response = requests.post(f"{base_url}/get_video", json=data, headers=headers)
+print(response.json())
+```
+
 ### Checking task status and downloading the file
 
 ```python
@@ -609,7 +634,7 @@ if status_response.json()['status'] == 'completed':
 - **avi** - Audio Video Interleave
 - **mov** - QuickTime File Format
 - **flv** - Flash Video
-- **3gp** - 3GPP multimedia
+- **gif** - Graphics Interchange Format (animated, no audio, 720p24)
 
 ### Audio Formats
 - **mp3** - MPEG Audio Layer III
