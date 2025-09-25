@@ -175,7 +175,7 @@ class YTDownloader:
                 
                 cmd = [
                     'ffmpeg', '-i', input_file,
-                    '-vf', 'fps=24,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse',
+                    '-vf', 'fps=24,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff:max_colors=128[p];[s1][p]paletteuse',
                     '-loop', '0',
                     output_file,
                     '-y'
