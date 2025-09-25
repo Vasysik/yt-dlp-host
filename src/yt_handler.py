@@ -174,8 +174,21 @@ class YTDownloader:
         opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_name),
-            'merge_output_format': output_format
         }
+        
+        # Handle output format
+        if output_format:
+            if output_format.lower() == 'gif':
+                # GIF requires special handling via FFmpeg post-processor
+                opts['postprocessors'] = [{
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': 'gif'
+                }]
+                # Force output name to be .gif
+                if is_video:
+                    opts['outtmpl'] = os.path.join(download_path, 'live_video.gif' if is_live else 'video.gif')
+            else:
+                opts['merge_output_format'] = output_format
         
         # Handle time ranges
         if is_live and task.get('duration'):
@@ -192,9 +205,38 @@ class YTDownloader:
         
         return opts
     
-    def _time_to_seconds(self, time_str: str) -> float:
-        h, m, s = map(float, time_str.split(':'))
-        return h * 3600 + m * 60 + s
+    def _time_to_seconds(self, ts) -> float:
+        if ts is None:
+            return 0.0
+        
+        if isinstance(ts, (int, float)):
+            return float(ts)
+        
+        ts_str = str(ts)
+        
+        if ':' not in ts_str:
+            try:
+                return float(ts_str)
+            except ValueError:
+                return 0.0
+        
+        # Time format string
+        parts = ts_str.split(':')
+        try:
+            # Support formats: "SS", "MM:SS", "HH:MM:SS"
+            if len(parts) == 1:
+                return float(parts[0])
+            elif len(parts) == 2:
+                m, s = map(float, parts)
+                return m * 60 + s
+            elif len(parts) == 3:
+                h, m, s = map(float, parts)
+                return h * 3600 + m * 60 + s
+            else:
+                # Invalid format, return 0
+                return 0.0
+        except (ValueError, TypeError):
+            return 0.0
     
     def cleanup_task(self, task_id: str):
         task_dir = self._get_task_dir(task_id)
