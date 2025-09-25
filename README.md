@@ -634,7 +634,7 @@ if status_response.json()['status'] == 'completed':
 - **avi** - Audio Video Interleave
 - **mov** - QuickTime File Format
 - **flv** - Flash Video
-- **gif** - Graphics Interchange Format (animated, no audio)
+- **gif** - Graphics Interchange Format (animated, no audio, 720p24)
 
 ### Audio Formats
 - **mp3** - MPEG Audio Layer III
