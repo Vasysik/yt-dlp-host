@@ -204,6 +204,7 @@ class YTDownloader:
         opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_name),
+            'extractor_args': { 'youtube': { 'player_client': ['default', '-tv_simply'], }, },
         }
         
         # Handle output format (but not GIF - we'll do that manually)
