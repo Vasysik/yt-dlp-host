@@ -175,7 +175,7 @@ class YTDownloader:
                 
                 cmd = [
                     'ffmpeg', '-i', input_file,
-                    '-vf', 'fps=24,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse',
+                    '-vf', 'fps=15,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff:max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5',
                     '-loop', '0',
                     output_file,
                     '-y'
@@ -204,6 +204,7 @@ class YTDownloader:
         opts = {
             'format': format_option,
             'outtmpl': os.path.join(download_path, output_name),
+            'extractor_args': { 'youtube': { 'player_client': ['default', '-tv_simply'], }, },
         }
         
         # Handle output format (but not GIF - we'll do that manually)
