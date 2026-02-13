@@ -37,7 +37,8 @@ def create_task(task_type: TaskType, data: dict) -> dict:
         force_keyframes=data.get('force_keyframes', False),
         start=data.get('start', 0),
         duration=data.get('duration'),
-        output_format=data.get('output_format')
+        output_format=data.get('output_format'),
+        output_filename=data.get('output_filename')
     )
     
     tasks = Storage.load_tasks()
@@ -70,6 +71,18 @@ def get_live_video():
 @require_permission('get_live_audio')
 def get_live_audio():
     return create_task(TaskType.GET_LIVE_AUDIO, request.json)
+
+@app.route('/search', methods=['POST'])
+@require_permission('search')
+def search():
+    data = request.json
+    query = data.get('query') if data else None
+
+    if not query:
+        return jsonify({'success': False, 'message': 'Query is required'}), 400
+
+    result = yt_handler.downloader.search(query)
+    return jsonify(result)
 
 @app.route('/status/<task_id>', methods=['GET'])
 def status(task_id: str):

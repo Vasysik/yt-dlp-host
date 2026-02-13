@@ -16,6 +16,7 @@ This API offers a range of endpoints for downloading YouTube videos, retrieving 
    - [Get Live Video (`/get_live_video`)](#get-live-video-get_live_video)
    - [Get Live Audio (`/get_live_audio`)](#get-live-audio-get_live_audio)
    - [Get Info (`/get_info`)](#get-info-get_info)
+   - [Search YouTube Videos (`/search`)](#search-youtube-videos-search)
    - [Create API Key (`/create_key`)](#create-api-key-create_key)
    - [Delete API Key (`/delete_key/<name>`)](#delete-api-key-delete_keyname)
    - [List API Keys (`/get_keys`)](#list-api-keys-get_keys)
@@ -92,6 +93,7 @@ Initiates a video download task from the specified URL.
   - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio". To download video without audio, set this to `null` or `none`.
   - `output_format` (optional): The output container format (mp4, mkv, webm, etc.). Default is "mp4".
+  - `output_filename` (optional): Custom filename for the downloaded file. When provided, file is saved to `/app/downloads/{output_filename}.{ext}` instead of `/app/downloads/{task_id}/`. Useful for organizing downloads with custom names.
   - `start_time` (optional): Starting point for video fragment in HH:MM:SS format or seconds as number.
   - `end_time` (optional): Ending point for video fragment in HH:MM:SS format or seconds as number.
   - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false.
@@ -128,6 +130,7 @@ Initiates an audio download task from the specified URL.
   - `url` (required): The URL of the audio to be downloaded.
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
   - `output_format` (optional): The output audio format (mp3, m4a, opus, etc.). Default is original format.
+  - `output_filename` (optional): Custom filename for the downloaded file. When provided, file is saved to `/app/downloads/{output_filename}.{ext}` instead of `/app/downloads/{task_id}/`. Useful for organizing downloads with custom names.
   - `start_time` (optional): Starting point for audio fragment in HH:MM:SS format or seconds as number.
   - `end_time` (optional): Ending point for audio fragment in HH:MM:SS format or seconds as number.
   - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false.
@@ -167,6 +170,7 @@ Initiates a live video download task from the specified URL.
   - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
   - `output_format` (optional): The output container format (mp4, mkv, webm, etc.). Default is "mp4".
+  - `output_filename` (optional): Custom filename for the downloaded file. When provided, file is saved to `/app/downloads/{output_filename}.{ext}` instead of `/app/downloads/{task_id}/`. Useful for organizing downloads with custom names.
 - **Permissions:** Requires the `get_live_video` permission.
 - **Response:**
   ```json
@@ -199,6 +203,7 @@ Initiates a live audio download task from the specified URL.
   - `url` (required): The URL of the live stream to be downloaded.
   - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
   - `output_format` (optional): The output audio format (mp3, m4a, opus, etc.). Default is original format.
+  - `output_filename` (optional): Custom filename for the downloaded file. When provided, file is saved to `/app/downloads/{output_filename}.{ext}` instead of `/app/downloads/{task_id}/`. Useful for organizing downloads with custom names.
   - `start` (optional): The starting point in seconds for the stream recording. Default is 0.
   - `duration` (required): The length of the recording in seconds from the start point.
 - **Permissions:** Requires the `get_live_audio` permission.
@@ -227,12 +232,55 @@ Retrieves information about the video from the specified URL.
   ```
 - **Parameters:**
   - `url` (required): The URL of the video to retrieve information about.
+  - `output_filename` (optional): Custom filename for the info file. When provided, file is saved to `/app/downloads/{output_filename}.json` instead of `/app/downloads/{task_id}/info.json`. Useful for organizing information files with custom names.
 - **Permissions:** Requires the `get_info` permission.
 - **Response:**
   ```json
   {
       "status": "waiting",
       "task_id": "ijklmnop87654321"
+  }
+  ```
+
+### Search YouTube Videos (`/search`)
+
+Search YouTube for videos matching a query string and return the first result with metadata.
+
+- **Method:** POST
+- **URL:** `/search`
+- **Headers:**
+  - `X-API-Key`: Your API key
+  - `Content-Type`: application/json
+- **Body:**
+  ```json
+  {
+      "query": "big buck bunny"
+  }
+  ```
+- **Parameters:**
+  - `query` (required): Search query string. Can be any text like "artist - song name".
+- **Permissions:** Requires the `search` permission.
+- **Response:**
+  ```json
+  {
+      "success": true,
+      "url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+      "title": "Big Buck Bunny",
+      "duration": 596,
+      "id": "aqz-KE-bpKQ"
+  }
+  ```
+- **Response Fields:**
+  - `success` (boolean): `true` if search found results, `false` otherwise
+  - `url` (string): Full YouTube URL to the video
+  - `title` (string): Video title from YouTube metadata
+  - `duration` (integer): Duration in seconds
+  - `id` (string): YouTube video ID
+- **Error Response:**
+  ```json
+  {
+      "success": false,
+      "message": "No videos found"
   }
   ```
 
@@ -249,7 +297,7 @@ Creates a new API key with the specified permissions.
   ```json
   {
       "name": "user_key",
-      "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"]
+      "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info", "search"]
   }
   ```
 - **Parameters:**
@@ -296,14 +344,14 @@ Retrieves a list of all existing API keys.
   {
       "admin": {
           "key": "admin_api_key_here",
-          "permissions": ["create_key", "delete_key", "get_key", "get_keys", "get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"],
+          "permissions": ["create_key", "delete_key", "get_key", "get_keys", "get_video", "get_audio", "get_live_video", "get_live_audio", "get_info", "search"],
           "memory_quota": 5368709120,
           "memory_usage": [],
           "last_access": "2024-01-01T12:00:00"
       },
       "user_key": {
           "key": "user_api_key_here",
-          "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"],
+          "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info", "search"],
           "memory_quota": 5368709120,
           "memory_usage": [],
           "last_access": "2024-01-01T12:00:00"
