@@ -1,3 +1,6 @@
 Flask==3.0.3
 yt-dlp
 gunicorn==21.2.0
+git add requirements.txt
+git commit -m "Add gunicorn"
+git push
