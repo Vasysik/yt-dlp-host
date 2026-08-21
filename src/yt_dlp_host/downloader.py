@@ -167,7 +167,7 @@ class DownloadEngine:
             opts["download_ranges"] = download_range_func(None, [(start, end)])
             opts["force_keyframes_at_cuts"] = bool(payload.get("force_keyframes", False))
 
-        # For live streams `start` is the relative offset requested by the legacy API.
+        # For live streams `start` is the relative offset requested by the established API.
         # Do not convert it to Unix epoch time (the old implementation did, which was incorrect).
         if is_live and payload.get("duration") is not None:
             has_download_range = True

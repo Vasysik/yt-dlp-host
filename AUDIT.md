@@ -51,7 +51,7 @@ There is one issue in the repository network's main issue tracker and no closed 
 | #12 | merged | GIF/start time experiments | Preserve numeric time support; do not resurrect brittle GIF special cases |
 | #13 | merged | GIF fixes | Superseded by later removal; no special-case port |
 | #15 | merged | audio/video fixes, GIF removal | Keep the cleanup direction; deterministic final-file discovery |
-| #16 | open | custom filename, search, MP3 ID3 metadata | Port custom filename safely; search/metadata belong in v2 if needed, not a legacy mutation |
+| #16 | open | custom filename, search, MP3 ID3 metadata | Port custom filename safely; add search/metadata only as explicit backward-compatible API extensions if they are actually needed |
 | #17 | open | Gunicorn | Intent is correct, PR content is malformed; implement clean Gunicorn config instead |
 
 ## Forks — complete network inventory (32)
@@ -84,7 +84,7 @@ These are identical to, behind, or effectively contained by the main repository 
 |---|---|---|
 | `2-fly-4-ai/yt-dlp-host` | Cloudflare R2/storage work, env variables | Storage should be abstractable; do not couple queue state to local files |
 | `adepanges/yt-dlp-host` | env config, admin key, cookies, curl-cffi/impersonation, estimator fallbacks/logging | Most useful operational fork: move config to env and support cookies/proxy/impersonation centrally; do not keep JSON/estimator workarounds |
-| `bgizdov/yt-dlp-host` | custom filename, search, mutagen ID3, logging | Safe custom filename is useful; search/metadata should be explicit v2 features |
+| `bgizdov/yt-dlp-host` | custom filename, search, mutagen ID3, logging | Safe custom filename is useful; search/metadata should be explicit optional API features rather than downloader-side hacks |
 | `cayohrun/yt-dlp-host` | Gunicorn/deployment and later API/auth removal | Production server yes; auth removal no |
 | `dwj0602/yt-dlp-host` | import/CMD/package startup fixes | Use a real package and stable module entrypoints |
 | `jimeny-ent/yt-dlp-host` | Cloudflare bucket/storage synchronization experiments | Reinforces storage-backend separation |
@@ -100,21 +100,21 @@ These are identical to, behind, or effectively contained by the main repository 
 
 ## Architecture selected for the cleanup
 
-### Keep Flask as the legacy adapter
+### Keep Flask as the HTTP adapter
 
 Changing Flask to FastAPI does not fix JSON races, duplicate workers, quota accounting or lifecycle coupling. A previous PR already explored/reverted framework churn. The cleaned implementation therefore keeps Flask only at the HTTP edge.
 
 ### Pluggable local state: SQLite/WAL + live legacy JSON
 
-SQLite remains the recommended backend because it gives the small service transactions and atomic job claims without adding mandatory Redis/Celery infrastructure. However, legacy compatibility includes the storage mode itself: `STORAGE_BACKEND=json` continues to use the original `api_keys.json` and `tasks.json` as live state. The modern JSON adapter preserves their public shape, adds process-wide `flock` locking and atomic replacement writes, and keeps leases/rate/quota bookkeeping in a hidden JSON sidecar. A later multi-host deployment can replace this repository layer with PostgreSQL/Redis while keeping both HTTP adapters unchanged.
+SQLite remains the recommended backend because it gives the small service transactions and atomic job claims without adding mandatory Redis/Celery infrastructure. However, legacy compatibility includes the storage mode itself: `STORAGE_BACKEND=json` continues to use the original `api_keys.json` and `tasks.json` as live state. The modern JSON adapter preserves their public shape, adds process-wide `flock` locking and atomic replacement writes, and keeps leases/rate/quota bookkeeping in a hidden JSON sidecar. A later multi-host deployment can replace this repository layer with PostgreSQL/Redis while keeping the public HTTP routes unchanged.
 
 ### Separate API and worker processes
 
 The web app never starts downloader threads on import. A separate `python -m yt_dlp_host.worker` process claims jobs atomically and maintains leases. Multiple API workers are safe; multiple download workers can also compete for jobs without submitting one WAITING task repeatedly.
 
-### Legacy API adapter + `/api/v2`
+### One backward-compatible API surface
 
-Legacy paths and response shapes remain available. V2 adds ownership-checked task status/files and a consistent place for future features. Historical plaintext key retrieval remains only because strict legacy compatibility requires it; new APIs should never add more secret-retrieval surfaces.
+The established paths and response shapes remain the primary public API. An intermediate refactor briefly introduced a parallel `/api/v2` task API, but it duplicated the same queue semantics without solving an additional core problem, so it was removed before adoption. New optional request fields and new non-breaking routes should extend the existing API instead of creating a second surface to document forever. Status/file ownership can already be enabled on the existing `/status` and `/files` routes with configuration. Historical plaintext key retrieval remains only because backward compatibility requires it; future work should not add more secret-retrieval surfaces.
 
 ### Quota based on observed bytes
 
@@ -128,8 +128,8 @@ The Docker image includes Deno and `yt-dlp[default]`. Cookies, proxy, impersonat
 
 - `STORAGE_BACKEND=sqlite`: one-time import of old `jsons/api_keys.json` and `jsons/tasks.json` into SQLite.
 - `STORAGE_BACKEND=json`: those same files remain the authoritative live backend; no forced migration.
-- Same legacy permission strings.
-- Same legacy task endpoint names and waiting/task-id response.
+- Same established permission strings.
+- Same task endpoint names and waiting/task-id response.
 - Same default 10-minute retention, 60/10-minute limit, 5 GiB per-key and 20 GiB global rolling quota semantics, but implemented correctly.
 - `/status` and `/files` remain public capability URLs by default because the old implementation actually behaved that way; both can be locked down with environment switches.
 - `src.server:app` and top-level `config.py` compatibility shims remain.

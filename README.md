@@ -1,6 +1,6 @@
-# yt-dlp-host — modernized, legacy-compatible
+# yt-dlp-host — modernized, backward-compatible
 
-This is a ground-up cleanup of the original `Vasysik/yt-dlp-host` architecture while keeping its HTTP API routes alive.
+This is a ground-up cleanup of the original `Vasysik/yt-dlp-host` architecture while keeping the established HTTP API as the primary interface.
 
 ## What changed
 
@@ -12,23 +12,23 @@ This is a ground-up cleanup of the original `Vasysik/yt-dlp-host` architecture w
 - **Current YouTube runtime requirements.** The Docker image includes Deno and deliberately installs the newest `yt-dlp` nightly on every uncached production rebuild, so YouTube extractor fixes reach production quickly.
 - **Cookies/proxy/impersonation are configuration, not source patches.**
 - **Legacy JSON stays usable.** SQLite can one-time import old files, or `STORAGE_BACKEND=json` can keep using them directly.
-- **No framework rewrite for its own sake.** Flask remains the compatibility surface; internals are the part that was replaced.
+- **No framework rewrite for its own sake.** Flask remains the HTTP surface; internals are the part that was replaced.
 
-## Compatibility
+## API compatibility
 
-The following legacy routes are preserved:
+The established routes remain the supported API:
 
 `POST /get_video`, `/get_audio`, `/get_live_video`, `/get_live_audio`, `/get_info`, `/create_key`, `/check_permissions`
 
-`GET /status/<task_id>`, `/files/<path>`, `/get_keys`, `/get_key/<name>`
+`GET /status/<task_id>`, `/files/<path>`, `/get_keys`, `/get_key/<name>`, `/health`
 
 `DELETE /delete_key/<name>`
 
-Legacy response keys/status codes are intentionally kept where practical, including the historical plaintext key-return endpoints. New code should prefer `/api/v2/*`.
+Existing response keys and status codes are intentionally kept where practical, including the historical plaintext key-return endpoints. New clients use the same routes as existing clients; there is no second versioned API surface to keep in sync.
 
-The frozen route-by-route compatibility contract is documented in [`docs/legacy-api.md`](docs/legacy-api.md). New API usage is documented in [`docs/api-v2.md`](docs/api-v2.md).
+The complete route-by-route API reference is documented in [`docs/api.md`](docs/api.md). A production-oriented smoke/e2e checklist is in [`docs/testing.md`](docs/testing.md).
 
-Two historically unauthenticated capability-style routes remain public by default for compatibility: `/status/<task_id>` and `/files/<path>`. Task IDs are now generated with `secrets`, and paths are strictly scoped to a known task. Set `LEGACY_PUBLIC_STATUS=false` and `LEGACY_PUBLIC_FILES=false` to require an API key.
+Two historically unauthenticated capability-style routes remain public by default for backward compatibility: `/status/<task_id>` and `/files/<path>`. Task IDs are now generated with `secrets`, and paths are strictly scoped to a known task. Set `LEGACY_PUBLIC_STATUS=false` and `LEGACY_PUBLIC_FILES=false` to require the owning API key on those same routes.
 
 ## Start
 
@@ -46,7 +46,7 @@ The API is at `http://localhost:5000`; the worker is a separate Compose service.
 
 The scheduler defaults to `/opt/yt-dlp-host`. If the checkout lives elsewhere, set `HOST_PROJECT_DIR` in `.env`. The project is mounted into the scheduler at the same absolute host path so Compose bind mounts continue to resolve correctly through `/var/run/docker.sock`.
 
-After a rebuild, the deployed yt-dlp version is visible at `/api/v2/health` as `yt_dlp_version`.
+After a rebuild, the deployed yt-dlp version is visible at `/health` as `yt_dlp_version`.
 
 ## Cookies (fixes the repository's open YouTube bot/cookies problem)
 
@@ -65,11 +65,13 @@ YTDLP_PROXY=http://user:pass@proxy.example:8080
 YTDLP_IMPERSONATE=chrome
 ```
 
-## APIs
+## API
 
-For new clients use [`docs/api-v2.md`](docs/api-v2.md). It documents authentication, every task type and field, polling, file downloads, error codes and ownership semantics.
+There is one public HTTP API surface. Existing and new clients use the same `/get_video`, `/get_audio`, `/get_info`, `/get_live_*`, `/status`, `/files`, and key-management routes. The refactor changed the implementation behind those routes, not the client contract.
 
-For existing clients use [`docs/legacy-api.md`](docs/legacy-api.md). Legacy and v2 requests enter the same queue.
+See [`docs/api.md`](docs/api.md) for authentication, permissions, every request field, polling, `info.json`, quality extraction, media/file delivery, Range requests, error shapes, key management, JSON mode, and complete client examples.
+
+New optional capabilities are added to the existing routes when they can be introduced without breaking old clients. For example, `output_filename` is an optional request field. Stricter ownership for `/status` and `/files` is available through `LEGACY_PUBLIC_STATUS=false` and `LEGACY_PUBLIC_FILES=false` rather than through a second API namespace.
 
 ## State backends and legacy JSON mode
 
@@ -144,4 +146,4 @@ pip install -r requirements.txt pytest
 pytest -q
 ```
 
-The tests cover the shared state contract on SQLite and live JSON, claims, rolling limits/quota behavior, URL/filename validation, v2 error shapes and legacy HTTP response shapes. Add fixture-based yt-dlp integration tests in CI using stable public test URLs; do not make the core unit suite depend on YouTube availability.
+The tests cover the shared state contract on SQLite and live JSON, claims, rolling limits/quota behavior, URL/filename validation, established HTTP response shapes, optional status ownership, and the single API surface. Real yt-dlp/ffmpeg compatibility is intentionally checked separately because public extractors are network-dependent. See [`docs/testing.md`](docs/testing.md) and the helper `scripts/smoke_test.sh`.

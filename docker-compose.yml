@@ -1,5 +1,5 @@
 services:
-  api:
+  yt-dlp-host:
     build: .
     command: gunicorn -c gunicorn.conf.py src.server:app
     env_file:

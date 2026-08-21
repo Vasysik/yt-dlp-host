@@ -7,9 +7,10 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
-from flask import Flask, Response, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file
 from yt_dlp.version import __version__ as yt_dlp_version
 
+from . import __version__
 from .config import settings
 from .migration import migrate_legacy_json
 from .storage import create_database
@@ -39,34 +40,23 @@ def create_app() -> Flask:
 
     app.extensions["yt_dlp_host_db"] = db
 
-    def v2_error(code: str, message: str, status: int):
-        return jsonify({"error": {"code": code, "message": message}}), status
-
-    def authenticate(*, permission: str | None = None, rate_limit: bool = True, v2: bool = False):
+    def authenticate(*, permission: str | None = None, rate_limit: bool = True):
         def decorator(func: F) -> F:
             @wraps(func)
             def wrapper(*args: Any, **kwargs: Any):
                 api_key = request.headers.get("X-API-Key")
                 if not api_key:
-                    if v2:
-                        return v2_error("unauthorized", "No API key provided", 401)
                     return jsonify({"error": "No API key provided"}), 401
                 key = db.key_by_secret(api_key)
                 if not key:
-                    if v2:
-                        return v2_error("unauthorized", "Invalid API key", 401)
                     return jsonify({"error": "Invalid API key"}), 401
                 if rate_limit and not db.check_rate_limit(key["name"]):
                     message = (
                         f"Rate limit exceeded. Max {settings.request_limit} per "
                         f"{settings.request_window_minutes} min"
                     )
-                    if v2:
-                        return v2_error("rate_limited", message, 429)
                     return jsonify({"error": message}), 429
                 if permission and permission not in key["permissions"]:
-                    if v2:
-                        return v2_error("forbidden", "Insufficient permissions", 403)
                     return jsonify({"error": "Insufficient permissions"}), 403
                 db.touch_key(key["name"])
                 request.environ["yt_dlp_host.key_name"] = key["name"]
@@ -93,7 +83,7 @@ def create_app() -> Flask:
             db.create_task(task_id, key_name, task_type.value, url, payload)
             return jsonify({"status": "waiting", "task_id": task_id})
 
-        endpoint.__name__ = f"legacy_{task_type.value}"
+        endpoint.__name__ = f"task_{task_type.value}"
         return endpoint
 
     app.add_url_rule("/get_video", view_func=task_endpoint(TaskType.GET_VIDEO), methods=["POST"])
@@ -103,7 +93,7 @@ def create_app() -> Flask:
     app.add_url_rule("/get_live_audio", view_func=task_endpoint(TaskType.GET_LIVE_AUDIO), methods=["POST"])
 
     @app.get("/status/<task_id>")
-    def legacy_status(task_id: str):
+    def task_status(task_id: str):
         stored = db.task(task_id)
         if stored is None:
             return jsonify({"status": "error", "message": "Task not found"}), 404
@@ -132,7 +122,7 @@ def create_app() -> Flask:
         return candidate if candidate.is_file() else None
 
     @app.get("/files/<path:filename>")
-    def legacy_file(filename: str):
+    def task_file(filename: str):
         if not settings.legacy_public_files:
             parts = Path(filename).parts
             task_id = parts[0] if parts else ""
@@ -234,74 +224,16 @@ def create_app() -> Flask:
             return jsonify({"message": "Permissions granted"}), 200
         return jsonify({"message": "Insufficient permissions"}), 403
 
-    # --- v2 ---------------------------------------------------------------
-    @app.get("/api/v2/health")
+    @app.get("/health")
     def health():
-        return jsonify({"status": "ok", "version": "2.0.0", "yt_dlp_version": yt_dlp_version, "storage_backend": settings.storage_backend})
-
-    @app.post("/api/v2/tasks")
-    @authenticate(permission=None, v2=True)
-    def v2_create_task():
-        data = request.get_json(silent=True)
-        if not isinstance(data, dict):
-            return v2_error("invalid_request", "JSON object is required", 400)
-        try:
-            task_type = TaskType(str(data.get("type")))
-            payload = normalize_task_payload(task_type.value, data, settings)
-        except (ValueError, ValidationError) as exc:
-            return v2_error("invalid_request", str(exc), 400)
-        key_name = str(request.environ["yt_dlp_host.key_name"])
-        key = db.key_by_name(key_name)
-        if not key or task_type.value not in key["permissions"]:
-            return v2_error("forbidden", "Insufficient permissions", 403)
-        task_id = secrets.token_urlsafe(18)
-        url = payload.pop("url")
-        db.create_task(task_id, key_name, task_type.value, url, payload)
-        return (
-            jsonify(
-                {
-                    "id": task_id,
-                    "status": "waiting",
-                    "status_url": f"/api/v2/tasks/{task_id}",
-                }
-            ),
-            202,
+        return jsonify(
+            {
+                "status": "ok",
+                "version": __version__,
+                "yt_dlp_version": yt_dlp_version,
+                "storage_backend": settings.storage_backend,
+            }
         )
-
-    @app.get("/api/v2/tasks/<task_id>")
-    @authenticate(permission=None, rate_limit=False, v2=True)
-    def v2_status(task_id: str):
-        task = db.task(task_id)
-        if not task:
-            return v2_error("not_found", "Task not found", 404)
-        key_name = str(request.environ["yt_dlp_host.key_name"])
-        if task["key_name"] != key_name:
-            return v2_error("not_found", "Task not found", 404)
-        result = {
-            "id": task_id,
-            "type": task["task_type"],
-            "status": task["status"],
-            "created_at": task["created_at"],
-            "completed_at": task["completed_time"],
-            "attempts": task["attempts"],
-        }
-        if task["file"]:
-            result["file"] = task["file"].replace("/files/", "/api/v2/files/", 1)
-        if task["error"]:
-            result["error"] = task["error"]
-        return jsonify(result)
-
-    @app.get("/api/v2/files/<task_id>/<path:filename>")
-    @authenticate(permission=None, rate_limit=False, v2=True)
-    def v2_file(task_id: str, filename: str):
-        task = db.task(task_id)
-        key_name = str(request.environ["yt_dlp_host.key_name"])
-        if not task or task["key_name"] != key_name:
-            return v2_error("not_found", "File not found", 404)
-        path = _resolve_task_file(f"{task_id}/{filename}")
-        if path is None:
-            return v2_error("not_found", "File not found", 404)
-        return send_file(path, as_attachment=False, conditional=True)
 
     return app
 
