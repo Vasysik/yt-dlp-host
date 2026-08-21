@@ -1,4 +1,12 @@
-/test.py
-/downloads
-/venv
-/__pycache__
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+data/
+downloads/*
+!downloads/.gitkeep
+cookies/
+*.sqlite3
+*.sqlite3-*

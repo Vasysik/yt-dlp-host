@@ -1,13 +1,43 @@
 services:
-  yt-dlp-host:
+  api:
     build: .
+    command: gunicorn -c gunicorn.conf.py src.server:app
     ports:
       - "5000:5000"
-    volumes:
-      - ./downloads:/app/downloads
-      - ./jsons:/app/jsons
-      - ./config.py:/app/config.py
     environment:
-      - FLASK_APP=src.server:app
-      - FLASK_RUN_HOST=0.0.0.0
+      DATABASE_PATH: /app/data/yt-dlp-host.sqlite3
+      DOWNLOAD_DIR: /app/downloads
+      LEGACY_KEYS_FILE: /app/jsons/api_keys.json
+      LEGACY_TASKS_FILE: /app/jsons/tasks.json
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      YTDLP_COOKIES_FILE: ${YTDLP_COOKIES_FILE:-}
+      YTDLP_PROXY: ${YTDLP_PROXY:-}
+      YTDLP_IMPERSONATE: ${YTDLP_IMPERSONATE:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+      - ./jsons:/app/jsons:ro
+      - ./cookies:/app/cookies:ro
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: python -m yt_dlp_host.worker
+    environment:
+      DATABASE_PATH: /app/data/yt-dlp-host.sqlite3
+      DOWNLOAD_DIR: /app/downloads
+      LEGACY_KEYS_FILE: /app/jsons/api_keys.json
+      LEGACY_TASKS_FILE: /app/jsons/tasks.json
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      YTDLP_COOKIES_FILE: ${YTDLP_COOKIES_FILE:-}
+      YTDLP_PROXY: ${YTDLP_PROXY:-}
+      YTDLP_IMPERSONATE: ${YTDLP_IMPERSONATE:-}
+      MAX_WORKERS: ${MAX_WORKERS:-4}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+      - ./jsons:/app/jsons:ro
+      - ./cookies:/app/cookies:ro
     restart: unless-stopped

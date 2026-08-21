@@ -1,0 +1,11 @@
+.git
+.github
+__pycache__
+.pytest_cache
+*.pyc
+*.sqlite3
+*.sqlite3-*
+data/
+downloads/*
+!downloads/.gitkeep
+cookies/
