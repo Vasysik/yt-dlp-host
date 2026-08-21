@@ -1,14 +1,13 @@
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.venv/
-venv/
-.env
+.git
+.github
+__pycache__
+.pytest_cache
+*.pyc
+*.sqlite3
+*.sqlite3-*
 data/
 downloads/*
 !downloads/.gitkeep
 cookies/
-*.sqlite3
-*.sqlite3-*
 
 jsons/.yt-dlp-host-state.json*

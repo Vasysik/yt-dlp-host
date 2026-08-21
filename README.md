@@ -1,622 +1,149 @@
-# YouTube Downloader API
+# yt-dlp-host — modernized, backward-compatible
 
-## Overview
+This is a ground-up cleanup of the original `Vasysik/yt-dlp-host` architecture while keeping the established HTTP API as the primary interface.
 
-This API offers a range of endpoints for downloading YouTube videos, retrieving video information, and managing API keys. It is designed to be user-friendly while providing robust functionality for video processing and information retrieval. The API leverages yt-dlp to handle video downloads and information retrieval efficiently on a dedicated host.
+## What changed
 
-## Table of Contents
+- **Pluggable state backend.** SQLite/WAL is the recommended default; the original `api_keys.json` + `tasks.json` mode remains a live legacy backend with process locking and atomic writes.
+- **API and worker are separate processes.** Importing Flask no longer starts download threads. Gunicorn can safely run multiple web workers.
+- **Durable queue with leases.** A task is atomically claimed once; crashed workers are recoverable after the lease expires.
+- **Real rolling rate limits and quota reservations.** Quota grows from yt-dlp progress and an independent on-disk monitor rather than performing a second metadata request just to guess size.
+- **Safe file resolution and cryptographically random task IDs.**
+- **Current YouTube runtime requirements.** The Docker image includes Deno and deliberately installs the newest `yt-dlp` nightly on every uncached production rebuild, so YouTube extractor fixes reach production quickly.
+- **Cookies/proxy/impersonation are configuration, not source patches.**
+- **Legacy JSON stays usable.** SQLite can one-time import old files, or `STORAGE_BACKEND=json` can keep using them directly.
+- **No framework rewrite for its own sake.** Flask remains the HTTP surface; internals are the part that was replaced.
 
-1. [Running the Server](#running-the-server)
-2. [Configuration](#configuration)
-3. [Authentication](#authentication)
-4. [Rate Limiting](#rate-limiting)
-5. [Endpoints](#endpoints)
-   - [Get Video (`/get_video`)](#get-video-get_video)
-   - [Get Audio (`/get_audio`)](#get-audio-get_audio)
-   - [Get Live Video (`/get_live_video`)](#get-live-video-get_live_video)
-   - [Get Live Audio (`/get_live_audio`)](#get-live-audio-get_live_audio)
-   - [Get Info (`/get_info`)](#get-info-get_info)
-   - [Create API Key (`/create_key`)](#create-api-key-create_key)
-   - [Delete API Key (`/delete_key/<name>`)](#delete-api-key-delete_keyname)
-   - [List API Keys (`/get_keys`)](#list-api-keys-get_keys)
-   - [Get API Key (`/get_key/<name>`)](#get-api-key-get_keyname)
-   - [Get Task Status (`/status/<task_id>`)](#get-task-status-statustask_id)
-   - [Get File (`/files/<path:filename>`)](#get-file-filespathfilename)
-6. [Error Handling](#error-handling)
-7. [Examples](#examples)
+## API compatibility
 
-## Running the Server
+The established routes remain the supported API:
 
-To run the server, follow these steps:
+`POST /get_video`, `/get_audio`, `/get_live_video`, `/get_live_audio`, `/get_info`, `/create_key`, `/check_permissions`
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/Vasysik/yt-dlp-host.git
-   cd yt-dlp-host
-   ```
+`GET /status/<task_id>`, `/files/<path>`, `/get_keys`, `/get_key/<name>`, `/health`
 
-2. Build and run the Docker container:
-   ```
-   docker-compose up --build
-   ```
+`DELETE /delete_key/<name>`
 
-3. The server will be accessible at `http://localhost:5000`.
+Existing response keys and status codes are intentionally kept where practical, including the historical plaintext key-return endpoints. New clients use the same routes as existing clients; there is no second versioned API surface to keep in sync.
 
-## Configuration
+The complete route-by-route API reference is documented in [`docs/api.md`](docs/api.md). A production-oriented smoke/e2e checklist is in [`docs/testing.md`](docs/testing.md).
 
-The server's configuration is defined in the `config.py` file. Here are the default values:
+Two historically unauthenticated capability-style routes remain public by default for backward compatibility: `/status/<task_id>` and `/files/<path>`. Task IDs are now generated with `secrets`, and paths are strictly scoped to a known task. Set `LEGACY_PUBLIC_STATUS=false` and `LEGACY_PUBLIC_FILES=false` to require the owning API key on those same routes.
 
-- `DOWNLOAD_DIR`: The directory where downloaded files will be stored. Default is `'/app/downloads'`.
-- `TASKS_FILE`: The path to the JSON file that stores task information. Default is `'jsons/tasks.json'`.
-- `KEYS_FILE`: The path to the JSON file that stores API keys and their permissions. Default is `'jsons/api_keys.json'`.
-- `CLEANUP_TIME_MINUTES`: The time (in minutes) after which completed tasks will be removed. Default is `10`.
-- `REQUEST_LIMIT`: The maximum number of requests allowed within the `CLEANUP_TIME_MINUTES` period. Default is `60`.
-- `MAX_WORKERS`: The maximum number of concurrent workers for processing tasks. Default is `4`.
-- `DEFAULT_QUOTA_GB`: Default memory quota for new API keys in GB. Default is `5`.
-- `QUOTA_RATE_MINUTES`: Time window for quota calculation in minutes. Default is `10`.
-- `AVAILABLE_BYTES`: Total available memory for all users in bytes. Default is `20GB`.
+## Start
 
-## Authentication
-
-All requests to the API must include an API key in the `X-API-Key` header. To obtain an API key, contact the API administrator or use the `/create_key` endpoint if you have create_key permissions.
-
-## Rate Limiting
-
-The API implements rate limiting to prevent abuse. Each API key is limited to `60` requests within a `10` minute window. Additionally, memory quotas are enforced to prevent excessive storage usage.
-
-## Endpoints
-
-### Get Video (`/get_video`)
-
-Initiates a video download task from the specified URL.
-
-- **Method:** POST
-- **URL:** `/get_video`
-- **Headers:**
-  - `X-API-Key`: Your API key
-  - `Content-Type`: application/json
-- **Body:**
-  ```json
-  {
-      "url": "https://youtu.be/1FPdtR_5KFo",
-      "video_format": "bestvideo[height<=1080]",
-      "audio_format": "bestaudio[abr<=129]",
-      "output_format": "mp4",
-      "start_time": "00:00:30",
-      "end_time": "00:01:00",
-      "force_keyframes": false
-  }
-  ```
-- **Parameters:**
-  - `url` (required): The URL of the video to be downloaded.
-  - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
-  - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio". To download video without audio, set this to `null` or `none`.
-  - `output_format` (optional): The output container format (mp4, mkv, webm, etc.). Default is "mp4".
-  - `start_time` (optional): Starting point for video fragment in HH:MM:SS format or seconds as number.
-  - `end_time` (optional): Ending point for video fragment in HH:MM:SS format or seconds as number.
-  - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false.
-- **Permissions:** Requires the `get_video` permission.
-- **Response:**
-  ```json
-  {
-      "status": "waiting",
-      "task_id": "abcdefgh12345678"
-  }
-  ```
-
-### Get Audio (`/get_audio`)
-
-Initiates an audio download task from the specified URL.
-
-- **Method:** POST
-- **URL:** `/get_audio`
-- **Headers:**
-  - `X-API-Key`: Your API key
-  - `Content-Type`: application/json
-- **Body:**
-  ```json
-  {
-      "url": "https://youtu.be/1FPdtR_5KFo",
-      "audio_format": "bestaudio[abr<=129]",
-      "output_format": "mp3",
-      "start_time": "00:00:30",
-      "end_time": "00:01:00",
-      "force_keyframes": false
-  }
-  ```
-- **Parameters:**
-  - `url` (required): The URL of the audio to be downloaded.
-  - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
-  - `output_format` (optional): The output audio format (mp3, m4a, opus, etc.). Default is original format.
-  - `start_time` (optional): Starting point for audio fragment in HH:MM:SS format or seconds as number.
-  - `end_time` (optional): Ending point for audio fragment in HH:MM:SS format or seconds as number.
-  - `force_keyframes` (optional): If true, ensures precise cutting but slower processing. If false, faster but less precise cutting. Default is false.
-- **Permissions:** Requires the `get_audio` permission.
-- **Response:**
-  ```json
-  {
-      "status": "waiting",
-      "task_id": "abcdefgh12345678"
-  }
-  ```
-
-### Get Live Video (`/get_live_video`)
-
-Initiates a live video download task from the specified URL.
-
-- **Method:** POST
-- **URL:** `/get_live_video`
-- **Headers:**
-  - `X-API-Key`: Your API key
-  - `Content-Type`: application/json
-- **Body:**
-  ```json
-  {
-      "url": "https://youtu.be/1FPdtR_5KFo",
-      "start": 0,
-      "duration": 300,
-      "video_format": "bestvideo[height<=1080]",
-      "audio_format": "bestaudio[abr<=129]",
-      "output_format": "mp4"
-  }
-  ```
-- **Parameters:**
-  - `url` (required): The URL of the live stream to be downloaded.
-  - `start` (optional): The starting point in seconds for the stream recording. Default is 0.
-  - `duration` (required): The length of the recording in seconds from the start point.
-  - `video_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the video. Default is "bestvideo".
-  - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
-  - `output_format` (optional): The output container format (mp4, mkv, webm, etc.). Default is "mp4".
-- **Permissions:** Requires the `get_live_video` permission.
-- **Response:**
-  ```json
-  {
-      "status": "waiting",
-      "task_id": "abcdefgh12345678"
-  }
-  ```
-
-### Get Live Audio (`/get_live_audio`)
-
-Initiates a live audio download task from the specified URL.
-
-- **Method:** POST
-- **URL:** `/get_live_audio`
-- **Headers:**
-  - `X-API-Key`: Your API key
-  - `Content-Type`: application/json
-- **Body:**
-  ```json
-  {
-      "url": "https://youtu.be/1FPdtR_5KFo",
-      "audio_format": "bestaudio[abr<=129]",
-      "output_format": "mp3",
-      "start": 0,
-      "duration": 300
-  }
-  ```
-- **Parameters:**
-  - `url` (required): The URL of the live stream to be downloaded.
-  - `audio_format` (optional): The [format](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#format-selection) of the audio. Default is "bestaudio".
-  - `output_format` (optional): The output audio format (mp3, m4a, opus, etc.). Default is original format.
-  - `start` (optional): The starting point in seconds for the stream recording. Default is 0.
-  - `duration` (required): The length of the recording in seconds from the start point.
-- **Permissions:** Requires the `get_live_audio` permission.
-- **Response:**
-  ```json
-  {
-      "status": "waiting",
-      "task_id": "abcdefgh12345678"
-  }
-  ```
-
-### Get Info (`/get_info`)
-
-Retrieves information about the video from the specified URL.
-
-- **Method:** POST
-- **URL:** `/get_info`
-- **Headers:**
-  - `X-API-Key`: Your API key
-  - `Content-Type`: application/json
-- **Body:**
-  ```json
-  {
-      "url": "https://youtu.be/1FPdtR_5KFo"
-  }
-  ```
-- **Parameters:**
-  - `url` (required): The URL of the video to retrieve information about.
-- **Permissions:** Requires the `get_info` permission.
-- **Response:**
-  ```json
-  {
-      "status": "waiting",
-      "task_id": "ijklmnop87654321"
-  }
-  ```
-
-### Create API Key (`/create_key`)
-
-Creates a new API key with the specified permissions.
-
-- **Method:** POST
-- **URL:** `/create_key`
-- **Headers:**
-  - `X-API-Key`: Your admin API key
-  - `Content-Type`: application/json
-- **Body:**
-  ```json
-  {
-      "name": "user_key",
-      "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"]
-  }
-  ```
-- **Parameters:**
-  - `name` (required): The name for the new API key.
-  - `permissions` (required): A list of permissions for the new API key.
-- **Permissions:** Requires the `create_key` permission.
-- **Response:**
-  ```json
-  {
-      "message": "API key created successfully",
-      "key": "new_api_key_here",
-      "name": "user_key"
-  }
-  ```
-
-### Delete API Key (`/delete_key/<name>`)
-
-Deletes an existing API key by its name.
-
-- **Method:** DELETE
-- **URL:** `/delete_key/<name>`
-- **Headers:**
-  - `X-API-Key`: Your admin API key
-- **Permissions:** Requires the `delete_key` permission.
-- **Response:**
-  ```json
-  {
-      "name": "user_key", 
-      "message": "API key deleted successfully"
-  }
-  ```
-
-### List API Keys (`/get_keys`)
-
-Retrieves a list of all existing API keys.
-
-- **Method:** GET
-- **URL:** `/get_keys`
-- **Headers:**
-  - `X-API-Key`: Your admin API key
-- **Permissions:** Requires the `get_keys` permission.
-- **Response:**
-  ```json
-  {
-      "admin": {
-          "key": "admin_api_key_here",
-          "permissions": ["create_key", "delete_key", "get_key", "get_keys", "get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"],
-          "memory_quota": 5368709120,
-          "memory_usage": [],
-          "last_access": "2024-01-01T12:00:00"
-      },
-      "user_key": {
-          "key": "user_api_key_here",
-          "permissions": ["get_video", "get_audio", "get_live_video", "get_live_audio", "get_info"],
-          "memory_quota": 5368709120,
-          "memory_usage": [],
-          "last_access": "2024-01-01T12:00:00"
-      }
-  }
-  ```
-
-### Get API Key (`/get_key/<name>`)
-
-Gets an existing API key by its name.
-
-- **Method:** GET
-- **URL:** `/get_key/<name>`
-- **Headers:**
-  - `X-API-Key`: Your admin API key
-- **Permissions:** Requires the `get_key` permission.
-- **Response:**
-  ```json
-  {
-      "name": "user_key", 
-      "key": "user_api_key_here"
-  }
-  ```
-
-### Check Permissions (`/check_permissions`)
-
-Checks if the current API key has the specified permissions.
-
-- **Method:** POST
-- **URL:** `/check_permissions`
-- **Headers:**
-  - `X-API-Key`: Your API key
-  - `Content-Type`: application/json
-- **Body:**
-  ```json
-  {
-      "permissions": ["get_video", "get_audio"]
-  }
-  ```
-- **Response:**
-  - Success (200):
-    ```json
-    {
-        "message": "Permissions granted"
-    }
-    ```
-  - Insufficient permissions (403):
-    ```json
-    {
-        "message": "Insufficient permissions"
-    }
-    ```
-
-### Get Task Status (`/status/<task_id>`)
-
-Retrieves the status of a specific task by its ID.
-
-- **Method:** GET
-- **URL:** `/status/<task_id>`
-- **Headers:**
-  - `X-API-Key`: Your API key
-- **Permissions:** No specific permission required, but the task must be associated with the API key used.
-- **Response:**
-  ```json
-  {
-      "key_name": "user_key",
-      "status": "completed",
-      "task_type": "get_video",
-      "url": "https://youtu.be/1FPdtR_5KFo",
-      "video_format": "bestvideo[height<=1080]",
-      "audio_format": "bestaudio[abr<=129]",
-      "output_format": "mp4",
-      "completed_time": "2024-01-01T12:00:00",
-      "file": "/files/abcdefgh12345678/video.mp4"
-  }
-  ```
-
-### Get File (`/files/<path:filename>`)
-
-Retrieves a file from the server.
-
-- **Method:** GET
-- **URL:** `/files/<path:filename>`
-- **Query Parameters:**
-  - `raw` (optional): If set to "true", forces download of the file.
-  - Any parameter matching keys in the `info.json` file (for info.json files only).
-  - `qualities`: Returns a structured list of available video and audio qualities formats (for info.json files only).
-- **Response:**
-  - For regular files: The file content with appropriate headers.
-  - For `info.json` files:
-    - If no query parameters: Full content of the `info.json` file.
-    - If query parameters present: Filtered data based on the parameters.
-    - For `qualities` parameter:
-      ```json
-      {
-        "qualities": {
-          "audio": {
-            "249": {
-              "abr": 47,
-              "acodec": "opus",
-              "audio_channels": 2,
-              "filesize": 528993
-            },
-            "139": {
-              "abr": 48,
-              "acodec": "mp4a.40.5",
-              "audio_channels": 2,
-              "filesize": 549935
-            }
-          },
-          "video": {
-            "394": {
-              "height": 144,
-              "width": 256,
-              "fps": 25,
-              "vcodec": "av01.0.00M.08",
-              "format_note": "144p",
-              "dynamic_range": "SDR",
-              "filesize": 1009634
-            },
-            "134": {
-              "height": 360,
-              "width": 640,
-              "fps": 25,
-              "vcodec": "avc1.4D401E",
-              "format_note": "360p",
-              "dynamic_range": "SDR",
-              "filesize": 6648273
-            }
-          }
-        }
-      }
-      ```
-
-## Error Handling
-
-The API uses standard HTTP status codes to indicate the success or failure of requests. In case of an error, the response will include a JSON object with an `error` field describing the issue.
-
-Example error response:
-```json
-{
-    "error": "Invalid API key"
-}
+```bash
+cp .env.example .env
+# set ADMIN_API_KEY for deterministic production credentials (recommended)
+docker compose up --build
 ```
 
-Common error codes:
-- 400: Bad Request - Invalid request parameters
-- 401: Unauthorized - Invalid or missing API key
-- 403: Forbidden - Insufficient permissions
-- 404: Not Found - Resource not found
-- 429: Too Many Requests - Rate limit exceeded
-- 500: Internal Server Error - Server-side error
+The API is at `http://localhost:5000`; the worker is a separate Compose service. Both join the existing external `yt-dlp-net` network.
 
-## Examples
+### Rolling yt-dlp in production
 
-### Getting a video in MP4 format
+`yt-dlp` is intentionally **not pinned**. The Dockerfile upgrades it with `--pre`, which selects the current nightly build. Other application dependencies remain pinned. The bundled scheduler rebuilds and recreates `api` and `worker` every day at 03:00 with `--pull --no-cache`; the no-cache flag is required so a cached pip layer cannot leave yt-dlp stale.
 
-```python
-import requests
+The scheduler defaults to `/opt/yt-dlp-host`. If the checkout lives elsewhere, set `HOST_PROJECT_DIR` in `.env`. The project is mounted into the scheduler at the same absolute host path so Compose bind mounts continue to resolve correctly through `/var/run/docker.sock`.
 
-api_key = "your_api_key_here"
-base_url = "http://localhost:5000"
+After a rebuild, the deployed yt-dlp version is visible at `/health` as `yt_dlp_version`.
 
-headers = {
-    "X-API-Key": api_key,
-    "Content-Type": "application/json"
-}
+## Cookies (fixes the repository's open YouTube bot/cookies problem)
 
-data = {
-    "url": "https://youtu.be/1FPdtR_5KFo",
-    "video_format": "bestvideo[height<=1080]",
-    "audio_format": "bestaudio[abr<=129]",
-    "output_format": "mp4"
-}
+Export a Netscape-format cookie file, mount it into `./cookies`, then set for example:
 
-response = requests.post(f"{base_url}/get_video", json=data, headers=headers)
-print(response.json())
+```env
+YTDLP_COOKIES_FILE=/app/cookies/youtube.txt
 ```
 
-### Getting audio in MP3 format
+Do not accept arbitrary cookie-file paths from API callers. Keep cookies server-side and read-only.
 
-```python
-import requests
+Optional central egress settings:
 
-api_key = "your_api_key_here"
-base_url = "http://localhost:5000"
-
-headers = {
-    "X-API-Key": api_key,
-    "Content-Type": "application/json"
-}
-
-data = {
-    "url": "https://youtu.be/1FPdtR_5KFo",
-    "audio_format": "bestaudio",
-    "output_format": "mp3"
-}
-
-response = requests.post(f"{base_url}/get_audio", json=data, headers=headers)
-print(response.json())
+```env
+YTDLP_PROXY=http://user:pass@proxy.example:8080
+YTDLP_IMPERSONATE=chrome
 ```
 
-### Getting a video fragment
+## API
 
-```python
-import requests
+There is one public HTTP API surface. Existing and new clients use the same `/get_video`, `/get_audio`, `/get_info`, `/get_live_*`, `/status`, `/files`, and key-management routes. The refactor changed the implementation behind those routes, not the client contract.
 
-api_key = "your_api_key_here"
-base_url = "http://localhost:5000"
+See [`docs/api.md`](docs/api.md) for authentication, permissions, every request field, polling, `info.json`, quality extraction, media/file delivery, Range requests, error shapes, key management, JSON mode, and complete client examples.
 
-headers = {
-    "X-API-Key": api_key,
-    "Content-Type": "application/json"
-}
+New optional capabilities are added to the existing routes when they can be introduced without breaking old clients. For example, `output_filename` is an optional request field. Stricter ownership for `/status` and `/files` is available through `LEGACY_PUBLIC_STATUS=false` and `LEGACY_PUBLIC_FILES=false` rather than through a second API namespace.
 
-data = {
-    "url": "https://youtu.be/1FPdtR_5KFo",
-    "video_format": "bestvideo[height<=720]",
-    "audio_format": "bestaudio",
-    "output_format": "webm",
-    "start_time": "00:00:30",
-    "end_time": "00:01:30",
-    "force_keyframes": True
-}
+## State backends and legacy JSON mode
 
-response = requests.post(f"{base_url}/get_video", json=data, headers=headers)
-print(response.json())
+SQLite remains the recommended production default:
+
+```env
+STORAGE_BACKEND=sqlite
 ```
 
-### Checking task status and downloading the file
+It uses `DATABASE_PATH` and performs a one-time import from the configured legacy `jsons/api_keys.json` and `jsons/tasks.json`. You can also invoke the import explicitly with:
 
-```python
-import requests
-import time
-
-api_key = "your_api_key_here"
-base_url = "http://localhost:5000"
-task_id = "abcdefgh12345678"
-
-headers = {
-    "X-API-Key": api_key
-}
-
-# Check status
-while True:
-    response = requests.get(f"{base_url}/status/{task_id}", headers=headers)
-    status_data = response.json()
-    
-    if status_data['status'] == 'completed':
-        file_url = base_url + status_data['file']
-        # Download the file
-        file_response = requests.get(file_url, headers=headers)
-        with open('downloaded_video.mp4', 'wb') as f:
-            f.write(file_response.content)
-        print("Download completed!")
-        break
-    elif status_data['status'] == 'error':
-        print(f"Error: {status_data.get('error', 'Unknown error')}")
-        break
-    else:
-        print(f"Status: {status_data['status']}")
-        time.sleep(2)
+```bash
+python scripts/migrate_legacy.py
 ```
 
-### Getting video information
+The original JSON files are also a fully live backend, not just an import source:
 
-```python
-import requests
-
-api_key = "your_api_key_here"
-base_url = "http://localhost:5000"
-
-headers = {
-    "X-API-Key": api_key,
-    "Content-Type": "application/json"
-}
-
-# Start info task
-data = {"url": "https://youtu.be/1FPdtR_5KFo"}
-response = requests.post(f"{base_url}/get_info", json=data, headers=headers)
-task_id = response.json()['task_id']
-
-# Wait for completion and get info
-time.sleep(2)
-status_response = requests.get(f"{base_url}/status/{task_id}", headers=headers)
-if status_response.json()['status'] == 'completed':
-    info_url = base_url + status_response.json()['file']
-    
-    # Get full info
-    info = requests.get(info_url, headers=headers).json()
-    
-    # Get only qualities
-    qualities = requests.get(f"{info_url}?qualities", headers=headers).json()
-    print(qualities)
+```env
+STORAGE_BACKEND=json
 ```
 
-## Supported Output Formats
+In JSON mode, API-key and task state is read from and written back to:
 
-### Video Formats
-- **mp4** - MPEG-4 Part 14 (recommended)
-- **mkv** - Matroska
-- **webm** - WebM
+- `LEGACY_KEYS_FILE` (default `/app/jsons/api_keys.json`)
+- `LEGACY_TASKS_FILE` (default `/app/jsons/tasks.json`)
 
-### Audio Formats
-- **mp3** - MPEG Audio Layer III
-- **m4a** - MPEG-4 Audio
-- **opus** - Opus Audio
-- **aac** - Advanced Audio Coding
+Those two files keep the old public object shape. Modern concurrency bookkeeping (worker leases, true rolling request events and transactional-style quota reservations) is stored separately in `JSON_STATE_FILE`, default `/app/jsons/.yt-dlp-host-state.json`. A single `flock` lock plus atomic `os.replace` writes prevents API and worker processes from clobbering each other's JSON updates.
 
-## Contributing
+This means an existing legacy installation can stop the old process, select `STORAGE_BACKEND=json`, and continue with its existing `api_keys.json` and `tasks.json` without first converting them to SQLite. SQLite is still preferred for heavier concurrency.
 
-Contributions to yt-dlp-host are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue on the [GitHub repository](https://github.com/Vasysik/yt-dlp-host). Pull requests are also encouraged.
+Do **not** run the original pre-refactor server and the new JSON backend against the same files at the same time: the old implementation does not participate in the new file lock and can overwrite concurrent changes. Stop the old containers before starting the new JSON-mode API/worker.
 
-## License
+## Important environment variables
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+| Variable | Default | Purpose |
+|---|---:|---|
+| `HOST_PROJECT_DIR` | `/opt/yt-dlp-host` | host checkout path used by the auto-update scheduler |
+| `STORAGE_BACKEND` | `sqlite` | `sqlite` (recommended) or live legacy `json` state |
+| `DATABASE_PATH` | `/app/data/yt-dlp-host.sqlite3` | SQLite state path |
+| `JSON_STATE_FILE` | `/app/jsons/.yt-dlp-host-state.json` | JSON-mode sidecar for leases/rate/quota metadata |
+| `LEGACY_KEYS_FILE` | `/app/jsons/api_keys.json` | legacy/live JSON API keys |
+| `LEGACY_TASKS_FILE` | `/app/jsons/tasks.json` | legacy/live JSON tasks |
+| `DOWNLOAD_DIR` | `/app/downloads` | task output |
+| `ADMIN_API_KEY` | generated if absent | deterministic admin bootstrap recommended; generated value is logged once |
+| `PORT` | `5000` | web bind port (Cloud Run-friendly) |
+| `MAX_WORKERS` | `4` | concurrent downloads in worker process |
+| `REQUEST_LIMIT` | `60` | requests per rolling window |
+| `REQUEST_WINDOW_MINUTES` | `10` | rate window |
+| `DEFAULT_QUOTA_BYTES` | `5 GiB` | per-key rolling byte quota |
+| `SERVER_QUOTA_BYTES` | `20 GiB` | global rolling byte quota |
+| `QUOTA_WINDOW_MINUTES` | `10` | quota window |
+| `INITIAL_QUOTA_RESERVATION_BYTES` | `64 MiB` | initial reservation for normal downloads; range/FFmpeg jobs conservatively reserve current headroom |
+| `QUOTA_MONITOR_SECONDS` | `0.5` | on-disk quota observation interval |
+| `TASK_RETENTION_MINUTES` | `10` | completed/error task retention |
+| `YTDLP_COOKIES_FILE` | unset | server-side cookies |
+| `YTDLP_PROXY` | unset | egress proxy |
+| `YTDLP_IMPERSONATE` | unset | yt-dlp impersonation target |
+| `ALLOW_PRIVATE_URLS` | `false` | SSRF safety switch |
+
+## Why not Celery/Redis/FastAPI?
+
+They do not solve the core problem by themselves. For this service, SQLite provides the required transactional state and queue semantics without forcing another daemon into a small deployment. If the service later needs multi-host scheduling at high throughput, the repository interfaces can be moved to PostgreSQL/Redis without changing the legacy HTTP adapters.
+
+## Download file storage
+
+The state backend described above is separate from downloaded-file storage. The current implementation intentionally keeps **local downloaded-file storage** as the only built-in backend. Several forks experimented with R2/GCS; the useful lesson is to introduce a storage interface when remote object storage is actually needed, rather than baking one vendor into task logic. The API already stores task file references separately from queue state, so that migration is straightforward.
+
+## Tests
+
+```bash
+pip install -r requirements.txt pytest
+pytest -q
+```
+
+The tests cover the shared state contract on SQLite and live JSON, claims, rolling limits/quota behavior, URL/filename validation, established HTTP response shapes, optional status ownership, and the single API surface. Real yt-dlp/ffmpeg compatibility is intentionally checked separately because public extractors are network-dependent. See [`docs/testing.md`](docs/testing.md) and the helper `scripts/smoke_test.sh`.
