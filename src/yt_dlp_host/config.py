@@ -51,6 +51,8 @@ class Settings:
     database_path: Path
     legacy_tasks_file: Path
     legacy_keys_file: Path
+    json_state_file: Path
+    storage_backend: str
 
     cleanup_minutes: int
     request_limit: int
@@ -86,11 +88,20 @@ class Settings:
     def from_env(cls) -> "Settings":
         download_dir = Path(os.getenv("DOWNLOAD_DIR", "/app/downloads")).expanduser().resolve()
         database_path = Path(os.getenv("DATABASE_PATH", "/app/data/yt-dlp-host.sqlite3")).expanduser().resolve()
+        legacy_tasks_file = Path(os.getenv("LEGACY_TASKS_FILE", "jsons/tasks.json")).expanduser().resolve()
+        legacy_keys_file = Path(os.getenv("LEGACY_KEYS_FILE", "jsons/api_keys.json")).expanduser().resolve()
+        storage_backend = os.getenv("STORAGE_BACKEND", "sqlite").strip().lower()
+        if storage_backend not in {"sqlite", "json"}:
+            raise ValueError("STORAGE_BACKEND must be either sqlite or json")
         settings = cls(
             download_dir=download_dir,
             database_path=database_path,
-            legacy_tasks_file=Path(os.getenv("LEGACY_TASKS_FILE", "jsons/tasks.json")).expanduser().resolve(),
-            legacy_keys_file=Path(os.getenv("LEGACY_KEYS_FILE", "jsons/api_keys.json")).expanduser().resolve(),
+            legacy_tasks_file=legacy_tasks_file,
+            legacy_keys_file=legacy_keys_file,
+            json_state_file=Path(
+                os.getenv("JSON_STATE_FILE", str(legacy_tasks_file.parent / ".yt-dlp-host-state.json"))
+            ).expanduser().resolve(),
+            storage_backend=storage_backend,
             cleanup_minutes=_int("TASK_RETENTION_MINUTES", 10, 1),
             request_limit=_int("REQUEST_LIMIT", 60, 1),
             request_window_minutes=_int("REQUEST_WINDOW_MINUTES", 10, 1),
@@ -125,6 +136,9 @@ class Settings:
     def ensure_directories(self) -> None:
         self.download_dir.mkdir(parents=True, exist_ok=True)
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        self.legacy_tasks_file.parent.mkdir(parents=True, exist_ok=True)
+        self.legacy_keys_file.parent.mkdir(parents=True, exist_ok=True)
+        self.json_state_file.parent.mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings.from_env()

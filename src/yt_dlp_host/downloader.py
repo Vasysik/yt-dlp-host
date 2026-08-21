@@ -9,14 +9,15 @@ from threading import Event, Lock, Thread
 from typing import Any
 
 from .config import Settings
-from .db import Database, QuotaExceeded
+from .db import QuotaExceeded
+from .storage import StateBackend
 from .models import TaskType
 
 log = logging.getLogger(__name__)
 
 
 class DownloadEngine:
-    def __init__(self, settings: Settings, db: Database):
+    def __init__(self, settings: Settings, db: StateBackend):
         self.settings = settings
         self.db = db
 

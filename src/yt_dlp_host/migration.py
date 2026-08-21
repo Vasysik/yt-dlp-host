@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from .db import Database
+from .storage import StateBackend
 
 log = logging.getLogger(__name__)
 MIGRATION_KEY = "legacy_json_import_v1"
@@ -21,7 +21,7 @@ def _load_object(path: Path) -> dict[str, Any]:
     return value
 
 
-def migrate_legacy_json(db: Database) -> tuple[int, int]:
+def migrate_legacy_json(db: StateBackend) -> tuple[int, int]:
     if db.get_metadata(MIGRATION_KEY) == "done":
         return 0, 0
 

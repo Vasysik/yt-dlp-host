@@ -10,3 +10,5 @@ downloads/*
 cookies/
 *.sqlite3
 *.sqlite3-*
+
+jsons/.yt-dlp-host-state.json*

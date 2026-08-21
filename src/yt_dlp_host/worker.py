@@ -10,18 +10,19 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from .config import settings
-from .db import Database
 from .downloader import DownloadEngine
 from .migration import migrate_legacy_json
+from .storage import create_database
 
 log = logging.getLogger(__name__)
 
 
 class Worker:
     def __init__(self) -> None:
-        self.db = Database(settings)
+        self.db = create_database(settings)
         self.db.initialize()
-        migrate_legacy_json(self.db)
+        if settings.storage_backend == "sqlite":
+            migrate_legacy_json(self.db)
         self.engine = DownloadEngine(settings, self.db)
         self.worker_id = f"{socket.gethostname()}:{os.getpid()}"
         self.stop_event = threading.Event()

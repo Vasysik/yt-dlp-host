@@ -4,14 +4,14 @@ This is a ground-up cleanup of the original `Vasysik/yt-dlp-host` architecture w
 
 ## What changed
 
-- **SQLite/WAL instead of shared JSON files.** Task claims, rate limits, API-key updates and quota reservations are transactional.
+- **Pluggable state backend.** SQLite/WAL is the recommended default; the original `api_keys.json` + `tasks.json` mode remains a live legacy backend with process locking and atomic writes.
 - **API and worker are separate processes.** Importing Flask no longer starts download threads. Gunicorn can safely run multiple web workers.
 - **Durable queue with leases.** A task is atomically claimed once; crashed workers are recoverable after the lease expires.
 - **Real rolling rate limits and quota reservations.** Quota grows from yt-dlp progress and an independent on-disk monitor rather than performing a second metadata request just to guess size.
 - **Safe file resolution and cryptographically random task IDs.**
-- **Current YouTube runtime requirements.** The Docker image includes Deno and installs `yt-dlp[default]` so the EJS challenge solver is available.
+- **Current YouTube runtime requirements.** The Docker image includes Deno and deliberately installs the newest `yt-dlp` nightly on every uncached production rebuild, so YouTube extractor fixes reach production quickly.
 - **Cookies/proxy/impersonation are configuration, not source patches.**
-- **Automatic one-time import** from legacy `jsons/api_keys.json` and `jsons/tasks.json`.
+- **Legacy JSON stays usable.** SQLite can one-time import old files, or `STORAGE_BACKEND=json` can keep using them directly.
 - **No framework rewrite for its own sake.** Flask remains the compatibility surface; internals are the part that was replaced.
 
 ## Compatibility
@@ -26,7 +26,7 @@ The following legacy routes are preserved:
 
 Legacy response keys/status codes are intentionally kept where practical, including the historical plaintext key-return endpoints. New code should prefer `/api/v2/*`.
 
-The frozen route-by-route compatibility contract is documented in [`docs/legacy-api.md`](docs/legacy-api.md).
+The frozen route-by-route compatibility contract is documented in [`docs/legacy-api.md`](docs/legacy-api.md). New API usage is documented in [`docs/api-v2.md`](docs/api-v2.md).
 
 Two historically unauthenticated capability-style routes remain public by default for compatibility: `/status/<task_id>` and `/files/<path>`. Task IDs are now generated with `secrets`, and paths are strictly scoped to a known task. Set `LEGACY_PUBLIC_STATUS=false` and `LEGACY_PUBLIC_FILES=false` to require an API key.
 
@@ -38,7 +38,15 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The API is at `http://localhost:5000`; the worker is a separate Compose service.
+The API is at `http://localhost:5000`; the worker is a separate Compose service. Both join the existing external `yt-dlp-net` network.
+
+### Rolling yt-dlp in production
+
+`yt-dlp` is intentionally **not pinned**. The Dockerfile upgrades it with `--pre`, which selects the current nightly build. Other application dependencies remain pinned. The bundled scheduler rebuilds and recreates `api` and `worker` every day at 03:00 with `--pull --no-cache`; the no-cache flag is required so a cached pip layer cannot leave yt-dlp stale.
+
+The scheduler defaults to `/opt/yt-dlp-host`. If the checkout lives elsewhere, set `HOST_PROJECT_DIR` in `.env`. The project is mounted into the scheduler at the same absolute host path so Compose bind mounts continue to resolve correctly through `/var/run/docker.sock`.
+
+After a rebuild, the deployed yt-dlp version is visible at `/api/v2/health` as `yt_dlp_version`.
 
 ## Cookies (fixes the repository's open YouTube bot/cookies problem)
 
@@ -57,43 +65,53 @@ YTDLP_PROXY=http://user:pass@proxy.example:8080
 YTDLP_IMPERSONATE=chrome
 ```
 
-## New API
+## APIs
 
-Create a task:
+For new clients use [`docs/api-v2.md`](docs/api-v2.md). It documents authentication, every task type and field, polling, file downloads, error codes and ownership semantics.
 
-```bash
-curl -X POST http://localhost:5000/api/v2/tasks \
-  -H "X-API-Key: $API_KEY" \
-  -H 'Content-Type: application/json' \
-  -d '{"type":"get_video","url":"https://www.youtube.com/watch?v=...","video_format":"bestvideo[height<=1080]","output_format":"mp4"}'
+For existing clients use [`docs/legacy-api.md`](docs/legacy-api.md). Legacy and v2 requests enter the same queue.
+
+## State backends and legacy JSON mode
+
+SQLite remains the recommended production default:
+
+```env
+STORAGE_BACKEND=sqlite
 ```
 
-Read status with the same key:
-
-```bash
-curl -H "X-API-Key: $API_KEY" http://localhost:5000/api/v2/tasks/<id>
-```
-
-V2 status/files enforce task ownership. Existing API keys still use the old permission names.
-
-## Legacy migration
-
-On first startup the service imports configured legacy JSON files once. Defaults inside Docker Compose are:
-
-- `/app/jsons/api_keys.json`
-- `/app/jsons/tasks.json`
-
-The `jsons` mount is read-only because new state lives in SQLite. You can also run:
+It uses `DATABASE_PATH` and performs a one-time import from the configured legacy `jsons/api_keys.json` and `jsons/tasks.json`. You can also invoke the import explicitly with:
 
 ```bash
 python scripts/migrate_legacy.py
 ```
 
+The original JSON files are also a fully live backend, not just an import source:
+
+```env
+STORAGE_BACKEND=json
+```
+
+In JSON mode, API-key and task state is read from and written back to:
+
+- `LEGACY_KEYS_FILE` (default `/app/jsons/api_keys.json`)
+- `LEGACY_TASKS_FILE` (default `/app/jsons/tasks.json`)
+
+Those two files keep the old public object shape. Modern concurrency bookkeeping (worker leases, true rolling request events and transactional-style quota reservations) is stored separately in `JSON_STATE_FILE`, default `/app/jsons/.yt-dlp-host-state.json`. A single `flock` lock plus atomic `os.replace` writes prevents API and worker processes from clobbering each other's JSON updates.
+
+This means an existing legacy installation can stop the old process, select `STORAGE_BACKEND=json`, and continue with its existing `api_keys.json` and `tasks.json` without first converting them to SQLite. SQLite is still preferred for heavier concurrency.
+
+Do **not** run the original pre-refactor server and the new JSON backend against the same files at the same time: the old implementation does not participate in the new file lock and can overwrite concurrent changes. Stop the old containers before starting the new JSON-mode API/worker.
+
 ## Important environment variables
 
 | Variable | Default | Purpose |
 |---|---:|---|
-| `DATABASE_PATH` | `/app/data/yt-dlp-host.sqlite3` | SQLite state |
+| `HOST_PROJECT_DIR` | `/opt/yt-dlp-host` | host checkout path used by the auto-update scheduler |
+| `STORAGE_BACKEND` | `sqlite` | `sqlite` (recommended) or live legacy `json` state |
+| `DATABASE_PATH` | `/app/data/yt-dlp-host.sqlite3` | SQLite state path |
+| `JSON_STATE_FILE` | `/app/jsons/.yt-dlp-host-state.json` | JSON-mode sidecar for leases/rate/quota metadata |
+| `LEGACY_KEYS_FILE` | `/app/jsons/api_keys.json` | legacy/live JSON API keys |
+| `LEGACY_TASKS_FILE` | `/app/jsons/tasks.json` | legacy/live JSON tasks |
 | `DOWNLOAD_DIR` | `/app/downloads` | task output |
 | `ADMIN_API_KEY` | generated if absent | deterministic admin bootstrap recommended; generated value is logged once |
 | `PORT` | `5000` | web bind port (Cloud Run-friendly) |
@@ -115,9 +133,9 @@ python scripts/migrate_legacy.py
 
 They do not solve the core problem by themselves. For this service, SQLite provides the required transactional state and queue semantics without forcing another daemon into a small deployment. If the service later needs multi-host scheduling at high throughput, the repository interfaces can be moved to PostgreSQL/Redis without changing the legacy HTTP adapters.
 
-## Storage backends
+## Download file storage
 
-The current implementation intentionally keeps **local storage** as the only built-in backend. Several forks experimented with R2/GCS; the useful lesson is to introduce a storage interface when remote object storage is actually needed, rather than baking one vendor into task logic. The API already stores task file references separately from queue state, so that migration is straightforward.
+The state backend described above is separate from downloaded-file storage. The current implementation intentionally keeps **local downloaded-file storage** as the only built-in backend. Several forks experimented with R2/GCS; the useful lesson is to introduce a storage interface when remote object storage is actually needed, rather than baking one vendor into task logic. The API already stores task file references separately from queue state, so that migration is straightforward.
 
 ## Tests
 
@@ -126,4 +144,4 @@ pip install -r requirements.txt pytest
 pytest -q
 ```
 
-The tests cover transactional claims, true rolling limits/quota behavior, URL/filename validation and legacy HTTP response shapes. Add fixture-based yt-dlp integration tests in CI using stable public test URLs; do not make the core unit suite depend on YouTube availability.
+The tests cover the shared state contract on SQLite and live JSON, claims, rolling limits/quota behavior, URL/filename validation, v2 error shapes and legacy HTTP response shapes. Add fixture-based yt-dlp integration tests in CI using stable public test URLs; do not make the core unit suite depend on YouTube availability.

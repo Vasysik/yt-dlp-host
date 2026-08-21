@@ -2,10 +2,14 @@ services:
   api:
     build: .
     command: gunicorn -c gunicorn.conf.py src.server:app
+    env_file:
+      - .env
     ports:
       - "5000:5000"
     environment:
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-sqlite}
       DATABASE_PATH: /app/data/yt-dlp-host.sqlite3
+      JSON_STATE_FILE: /app/jsons/.yt-dlp-host-state.json
       DOWNLOAD_DIR: /app/downloads
       LEGACY_KEYS_FILE: /app/jsons/api_keys.json
       LEGACY_TASKS_FILE: /app/jsons/tasks.json
@@ -17,15 +21,21 @@ services:
     volumes:
       - ./data:/app/data
       - ./downloads:/app/downloads
-      - ./jsons:/app/jsons:ro
+      - ./jsons:/app/jsons
       - ./cookies:/app/cookies:ro
+    networks:
+      - yt-dlp-net
     restart: unless-stopped
 
   worker:
     build: .
     command: python -m yt_dlp_host.worker
+    env_file:
+      - .env
     environment:
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-sqlite}
       DATABASE_PATH: /app/data/yt-dlp-host.sqlite3
+      JSON_STATE_FILE: /app/jsons/.yt-dlp-host-state.json
       DOWNLOAD_DIR: /app/downloads
       LEGACY_KEYS_FILE: /app/jsons/api_keys.json
       LEGACY_TASKS_FILE: /app/jsons/tasks.json
@@ -38,6 +48,34 @@ services:
     volumes:
       - ./data:/app/data
       - ./downloads:/app/downloads
-      - ./jsons:/app/jsons:ro
+      - ./jsons:/app/jsons
       - ./cookies:/app/cookies:ro
+    networks:
+      - yt-dlp-net
     restart: unless-stopped
+
+  scheduler:
+    image: docker:cli
+    container_name: yt-dlp-scheduler
+    restart: unless-stopped
+    environment:
+      HOST_PROJECT_DIR: ${HOST_PROJECT_DIR:-/opt/yt-dlp-host}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount the repository at the same absolute path inside the scheduler.
+      # This is important because Docker Compose bind paths are interpreted by
+      # the host Docker daemon, not by the scheduler container itself.
+      - ${HOST_PROJECT_DIR:-/opt/yt-dlp-host}:${HOST_PROJECT_DIR:-/opt/yt-dlp-host}
+    working_dir: ${HOST_PROJECT_DIR:-/opt/yt-dlp-host}
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        # Rebuild production daily so the image always receives the newest
+        # yt-dlp nightly. --no-cache is intentional: otherwise Docker could
+        # reuse the pip layer and leave yt-dlp stale.
+        echo "0 3 * * * cd \"$$HOST_PROJECT_DIR\" && docker compose build --pull --no-cache api worker && docker compose up -d --force-recreate api worker" > /etc/crontabs/root
+        crond -f -l 2
+
+networks:
+  yt-dlp-net:
+    external: true

@@ -19,4 +19,7 @@ def test_health(tmp_path):
     client = app.test_client()
     response = client.get("/api/v2/health")
     assert response.status_code == 200
-    assert response.get_json()["status"] == "ok"
+    payload = response.get_json()
+    assert payload["status"] == "ok"
+    assert isinstance(payload["yt_dlp_version"], str)
+    assert payload["yt_dlp_version"]

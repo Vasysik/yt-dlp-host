@@ -9,3 +9,5 @@ data/
 downloads/*
 !downloads/.gitkeep
 cookies/
+
+jsons/.yt-dlp-host-state.json*

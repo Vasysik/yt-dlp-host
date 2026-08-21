@@ -104,9 +104,9 @@ These are identical to, behind, or effectively contained by the main repository 
 
 Changing Flask to FastAPI does not fix JSON races, duplicate workers, quota accounting or lifecycle coupling. A previous PR already explored/reverted framework churn. The cleaned implementation therefore keeps Flask only at the HTTP edge.
 
-### SQLite/WAL for local durable state
+### Pluggable local state: SQLite/WAL + live legacy JSON
 
-SQLite gives the small service transactions and atomic job claims without adding mandatory Redis/Celery infrastructure. It stores API keys, jobs, request events and rolling quota reservations. A later multi-host deployment can replace this repository layer with PostgreSQL/Redis while keeping HTTP compatibility.
+SQLite remains the recommended backend because it gives the small service transactions and atomic job claims without adding mandatory Redis/Celery infrastructure. However, legacy compatibility includes the storage mode itself: `STORAGE_BACKEND=json` continues to use the original `api_keys.json` and `tasks.json` as live state. The modern JSON adapter preserves their public shape, adds process-wide `flock` locking and atomic replacement writes, and keeps leases/rate/quota bookkeeping in a hidden JSON sidecar. A later multi-host deployment can replace this repository layer with PostgreSQL/Redis while keeping both HTTP adapters unchanged.
 
 ### Separate API and worker processes
 
@@ -126,7 +126,8 @@ The Docker image includes Deno and `yt-dlp[default]`. Cookies, proxy, impersonat
 
 ## Compatibility/migration policy
 
-- One-time import of old `jsons/api_keys.json` and `jsons/tasks.json` into SQLite.
+- `STORAGE_BACKEND=sqlite`: one-time import of old `jsons/api_keys.json` and `jsons/tasks.json` into SQLite.
+- `STORAGE_BACKEND=json`: those same files remain the authoritative live backend; no forced migration.
 - Same legacy permission strings.
 - Same legacy task endpoint names and waiting/task-id response.
 - Same default 10-minute retention, 60/10-minute limit, 5 GiB per-key and 20 GiB global rolling quota semantics, but implemented correctly.
