@@ -1,8 +1,21 @@
-# yt-dlp-host — modernized, backward-compatible
+# yt-dlp-host
 
-This is a ground-up cleanup of the original `Vasysik/yt-dlp-host` architecture while keeping the established HTTP API as the primary interface.
+A self-hosted, Dockerized HTTP API for `yt-dlp`, built for reliable media downloading from your own server.
 
-## What changed
+Use it from bots, applications, scripts, or other services to download video, audio, metadata, and live media through a simple API. `yt-dlp-host` provides a persistent task queue, dedicated workers, API keys, quotas, rate limits, FFmpeg processing, JSON or SQLite state, and automatic access to current `yt-dlp` fixes.
+
+## Features
+
+- Video, audio, metadata, and live-media downloads through a simple HTTP API.
+- Persistent asynchronous task queue with dedicated download workers.
+- API keys, permissions, rolling rate limits, and download quotas.
+- FFmpeg processing for audio extraction, remuxing, clipping, and format conversion.
+- SQLite or JSON state backends.
+- Server-side cookies, proxy, and impersonation configuration.
+- Docker-first production deployment with Gunicorn, Deno, and rolling `yt-dlp` nightly updates.
+- Backward compatible with clients using the original `yt-dlp-host` API.
+
+## Architecture and reliability
 
 - **Pluggable state backend.** SQLite/WAL is the recommended default; the original `api_keys.json` + `tasks.json` mode remains a live legacy backend with process locking and atomic writes.
 - **API and worker are separate processes.** Importing Flask no longer starts download threads. Gunicorn can safely run multiple web workers.
