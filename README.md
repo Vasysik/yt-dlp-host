@@ -160,3 +160,7 @@ pytest -q
 ```
 
 The tests cover the shared state contract on SQLite and live JSON, claims, rolling limits/quota behavior, URL/filename validation, established HTTP response shapes, optional status ownership, and the single API surface. Real yt-dlp/ffmpeg compatibility is intentionally checked separately because public extractors are network-dependent. See [`docs/testing.md`](docs/testing.md) and the helper `scripts/smoke_test.sh`.
+
+## Hosted option
+
+If you don’t want to self-host with Docker, [Vid Kraken](https://vidkraken.com) is a managed YouTube download API (info / mp3 / mp4 endpoints).
