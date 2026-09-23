@@ -32,6 +32,19 @@ Two historically unauthenticated capability-style routes remain public by defaul
 
 ## Start
 
+### Without Docker (Linux)
+
+Install Python 3 (including `venv`) and FFmpeg, then run:
+
+```bash
+chmod +x run.sh
+./run.sh
+```
+
+The script creates `.venv`, installs the Python dependencies, and starts both the API and the download worker. It stores downloads and state in this checkout; press Ctrl+C to stop both processes. An optional `.env` can configure the server (see `.env.example`); set `ADMIN_API_KEY` there to keep a stable admin key. Install Deno for full YouTube extraction support.
+
+### Docker Compose
+
 ```bash
 cp .env.example .env
 # set ADMIN_API_KEY for deterministic production credentials (recommended)
