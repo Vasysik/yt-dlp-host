@@ -3,11 +3,22 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-command -v python3 >/dev/null || { echo "Install python3 and python3-venv first." >&2; exit 1; }
+python_cmd="${PYTHON:-python3}"
+if [[ -x .venv/bin/python ]]; then
+    python_to_check=.venv/bin/python
+else
+    python_to_check="$python_cmd"
+fi
+command -v "$python_to_check" >/dev/null || { echo "Install Python 3.11+ and its venv package first." >&2; exit 1; }
+"$python_to_check" -c 'import sys; sys.exit(sys.version_info < (3, 11))' || {
+    echo "Python 3.11+ is required. On Ubuntu 22.04: sudo apt install python3.11 python3.11-venv" >&2
+    echo "If .venv already exists, remove it, then run: PYTHON=python3.11 ./run.sh" >&2
+    exit 1
+}
 command -v ffmpeg >/dev/null || { echo "Install ffmpeg first." >&2; exit 1; }
 
 if [[ ! -x .venv/bin/python ]]; then
-    python3 -m venv .venv
+    "$python_cmd" -m venv .venv
 fi
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m pip install --upgrade --pre 'yt-dlp[default]'
